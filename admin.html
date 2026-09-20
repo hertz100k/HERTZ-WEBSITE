@@ -1,0 +1,1938 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" id="htmlRoot">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>متجر HERTZ | الرئيسية</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Orbitron:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Cairo', sans-serif;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            color: #ffffff;
+            overflow-x: hidden;
+            position: relative;
+            background: #040406;
+        }
+
+        .bg-video {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -3;
+            filter: brightness(0.85) contrast(1.15) saturate(1.2);
+        }
+
+        .fog-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.55) 100%);
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        @keyframes rgbRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 20px rgba(0, 229, 255, 0.4), inset 0 0 15px rgba(229, 36, 36, 0.4); }
+            50% { box-shadow: 0 0 40px rgba(229, 36, 36, 0.8), inset 0 0 25px rgba(0, 229, 255, 0.8); }
+        }
+
+        .login-lang-btn {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 9999;
+            background: rgba(14, 14, 20, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 18px;
+            border-radius: 12px;
+            color: #00e5ff;
+            font-weight: 800;
+            font-size: 13px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+            transition: 0.3s;
+        }
+        [dir="ltr"] .login-lang-btn {
+            right: auto;
+            left: 15px;
+        }
+        .login-lang-btn:hover { background: #00e5ff; color: #040406; }
+
+        .login-section {
+            width: 100%;
+            max-width: 450px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            transition: all 0.5s ease;
+        }
+
+        .login-section.fade-out {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+            display: none !important;
+        }
+
+        .login-card {
+            width: 100%;
+            background: rgba(14, 14, 20, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            padding: 24px 20px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(22px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+
+        .logo-wrapper {
+            position: relative;
+            width: 90px;
+            height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+
+        .logo-img {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8));
+        }
+
+        .logo-outer-edge-led {
+            position: absolute;
+            inset: -6px;
+            z-index: 1;
+            pointer-events: none;
+            -webkit-mask-image: url('https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png');
+            mask-image: url('https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png');
+            -webkit-mask-size: contain;
+            mask-size: contain;
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            mask-position: center;
+        }
+
+        .logo-outer-edge-led::before {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: conic-gradient(from 0deg, #ff0055, #00e5ff, #00ff66, #ffea00, #ff0055);
+            animation: rgbRotate 3s linear infinite;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 2px;
+            text-align: center;
+        }
+
+        .management-badge-container {
+            position: relative;
+            padding: 5px 16px;
+            border-radius: 12px;
+            margin-bottom: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background: rgba(20, 20, 30, 0.45);
+            backdrop-filter: blur(12px);
+        }
+
+        .management-badge-container::before {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: conic-gradient(from 0deg, #ff0055, #00e5ff, #00ff66, #ffea00, #ff0055);
+            animation: rgbRotate 4s linear infinite;
+            z-index: 0;
+        }
+
+        .management-badge-container::after {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            background: rgba(14, 14, 22, 0.85);
+            backdrop-filter: blur(15px);
+            border-radius: 10px;
+            z-index: 1;
+        }
+
+        .card-subtitle {
+            position: relative;
+            z-index: 2;
+            font-size: 12px;
+            color: #00e5ff;
+            font-weight: 800;
+            text-align: center;
+            letter-spacing: 0.5px;
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.4);
+        }
+
+        .input-label-title {
+            font-size: 11px;
+            color: #c0c0d2;
+            font-weight: 600;
+            margin-bottom: 3px;
+            display: block;
+        }
+        [dir="ltr"] .input-label-title { text-align: left; }
+        [dir="rtl"] .input-label-title { text-align: right; }
+
+        .input-wrapper {
+            position: relative;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+        .custom-input, .custom-select, .custom-textarea {
+            width: 100%;
+            background: rgba(20, 20, 28, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 0 14px;
+            color: #ffffff !important;
+            font-size: 14px;
+            font-weight: 700;
+            outline: none;
+            transition: all 0.25s ease;
+        }
+        .custom-input, .custom-select { height: 45px; }
+        .custom-textarea { padding: 10px 14px; height: 80px; resize: none; }
+
+        .custom-input::placeholder, .custom-textarea::placeholder { color: #888899 !important; font-weight: 500; }
+        
+        .custom-input:focus, .custom-select:focus, .custom-textarea:focus {
+            border-color: #e52424;
+            background: rgba(25, 25, 36, 1);
+            box-shadow: 0 0 12px rgba(229, 36, 36, 0.35);
+        }
+
+        .password-toggle-btn {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #888899;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+        [dir="ltr"] .password-toggle-btn {
+            left: auto;
+            right: 14px;
+        }
+        .password-toggle-btn:hover { color: #00e5ff; }
+
+        .error-message {
+            color: #ff3333;
+            font-size: 11px;
+            font-weight: 700;
+            text-align: center;
+            display: none;
+            margin-top: 4px;
+        }
+
+        .init-status-msg {
+            font-size: 11px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 8px;
+            color: #00e5ff;
+        }
+
+        .submit-btn {
+            width: 100%;
+            height: 45px;
+            background: linear-gradient(135deg, #e52424 0%, #b91c1c 100%);
+            border: none;
+            border-radius: 12px;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 8px;
+            box-shadow: 0 6px 18px rgba(229, 36, 36, 0.45);
+            transition: all 0.25s ease;
+        }
+        .submit-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .custom-file-upload-box {
+            position: relative;
+            width: 100%;
+            height: 42px;
+            background: rgba(20, 20, 28, 0.95);
+            border: 1px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+            transition: all 0.25s ease;
+        }
+        .custom-file-upload-box input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            width: 100%;
+            height: 100%;
+        }
+        .custom-file-upload-text {
+            font-size: 11px;
+            font-weight: 700;
+            color: #b0b0c2;
+            text-align: center;
+            pointer-events: none;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 8px;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 4, 6, 0.92);
+            backdrop-filter: blur(15px);
+            z-index: 99999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .epic-loader-container {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .epic-ring {
+            position: absolute;
+            inset: 0;
+            border: 4px solid transparent;
+            border-top-color: #00e5ff;
+            border-bottom-color: #e52424;
+            border-radius: 50%;
+            animation: rgbRotate 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+        }
+
+        .epic-ring-inner {
+            position: absolute;
+            inset: 10px;
+            border: 4px solid transparent;
+            border-left-color: #00ff66;
+            border-right-color: #ffea00;
+            border-radius: 50%;
+            animation: rgbRotate 0.9s linear infinite reverse;
+        }
+
+        .epic-core {
+            width: 25px;
+            height: 25px;
+            background: radial-gradient(circle, #00e5ff 0%, #e52424 100%);
+            border-radius: 50%;
+            animation: pulseGlow 1.5s infinite;
+        }
+
+        .loading-text {
+            font-size: 15px;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: 1px;
+            text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+            animation: pulseGlow 2s infinite;
+        }
+
+        .store-section {
+            display: none;
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            overflow-y: auto;
+            flex-direction: column;
+            background: #040406;
+        }
+
+        .store-bg-video {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -2;
+            filter: blur(8px) brightness(0.5) contrast(1.1);
+            transform: scale(1.05);
+        }
+
+        .store-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 4, 6, 0.65);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .store-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: rgba(10, 10, 15, 0.85);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(18px);
+            position: sticky;
+            top: 0;
+            z-index: 101;
+        }
+
+        .header-left-actions { display: flex; align-items: center; gap: 10px; }
+        .header-right-actions { display: flex; align-items: center; gap: 10px; }
+
+        .store-support-btn {
+            background: rgba(0, 229, 255, 0.12);
+            border: 1px solid rgba(0, 229, 255, 0.3);
+            padding: 8px 14px;
+            border-radius: 10px;
+            color: #00e5ff;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .account-dropdown-container { position: relative; }
+        .account-trigger-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 14px;
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+        .account-menu {
+            position: absolute;
+            top: 44px;
+            left: 0;
+            width: 220px;
+            background: rgba(14, 14, 22, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+            padding: 10px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.7);
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+            z-index: 105;
+            backdrop-filter: blur(15px);
+        }
+        [dir="ltr"] .account-menu { left: 0; right: auto; }
+        [dir="rtl"] .account-menu { left: 0; right: auto; }
+        .account-menu.show { display: flex; }
+        .acc-info-box {
+            padding: 6px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        [dir="rtl"] .acc-info-box { text-align: right; }
+        [dir="ltr"] .acc-info-box { text-align: left; }
+        .acc-name { font-size: 12.5px; font-weight: 800; color: #fff; }
+        .logout-btn-item {
+            background: rgba(229, 36, 36, 0.15);
+            border: 1px solid rgba(229, 36, 36, 0.3);
+            color: #ff4d4d;
+            padding: 6px;
+            border-radius: 8px;
+            font-size: 11.5px;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+            transition: 0.2s;
+        }
+        .logout-btn-item:hover { background: rgba(229, 36, 36, 0.3); color: #fff; }
+
+        .store-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 15px 90px 15px;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+            position: relative;
+        }
+
+        .store-main-heading { font-size: 24px; font-weight: 900; color: #ffffff; margin-bottom: 25px; text-align: center; }
+
+        .store-devices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            width: 100%;
+            justify-content: center;
+            max-width: 950px;
+            margin: 0 auto;
+        }
+
+        .device-card-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; position: relative; width: 100%; }
+        
+        .device-card-placeholder {
+            position: relative;
+            background: rgba(10, 10, 15, 0.85); 
+            border-radius: 18px;
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            max-height: 240px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: transform 0.35s ease, box-shadow 0.35s ease;
+        }
+        .device-card-placeholder:hover { transform: translateY(-4px); box-shadow: 0 10px 25px rgba(229, 36, 36, 0.3); }
+
+        .device-card-placeholder::before {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: conic-gradient(from 0deg, #ff0055, #00e5ff, #00ff66, #ffea00, #ff0055);
+            animation: rgbRotate 4s linear infinite;
+            z-index: -2;
+            opacity: 0.85;
+        }
+
+        .device-card-placeholder::after {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            background: rgba(12, 12, 18, 0.98);
+            border-radius: 16px;
+            z-index: -1;
+        }
+
+        .device-img-cover {
+            position: absolute;
+            inset: 3px;
+            width: calc(100% - 6px);
+            height: calc(100% - 6px);
+            object-fit: cover;
+            border-radius: 15px;
+            z-index: 2;
+        }
+
+        .device-title-below { font-size: 14px; font-weight: 800; color: #ffffff; text-align: center; }
+
+        .admin-manual-tools {
+            position: fixed;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(14, 14, 22, 0.95);
+            border: 2px solid #00e5ff;
+            padding: 8px 15px;
+            border-radius: 14px;
+            z-index: 99999;
+            display: none;
+            gap: 10px;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0, 229, 255, 0.4);
+            backdrop-filter: blur(10px);
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 92%;
+            max-width: 750px;
+        }
+        .admin-manual-tools.active { display: flex; }
+        .manual-btn {
+            background: #00e5ff;
+            color: #040406;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 800;
+            font-size: 11.5px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .manual-btn:hover { background: #fff; }
+        .manual-btn.danger { background: #e52424; color: #fff; }
+        .manual-btn.success { background: #00ff66; color: #040406; }
+
+        .draggable-element {
+            position: relative;
+            touch-action: none;
+        }
+        
+        .edit-mode-active .draggable-element {
+            border: 2px dashed #00e5ff;
+            cursor: grab !important;
+            padding: 8px;
+            background: rgba(0, 229, 255, 0.05);
+            border-radius: 12px;
+        }
+        .edit-mode-active .draggable-element:active {
+            cursor: grabbing !important;
+        }
+        .edit-mode-active a, 
+        .edit-mode-active .device-card-wrapper,
+        .edit-mode-active button:not(.manual-btn) {
+            pointer-events: none !important;
+        }
+
+        .edit-mode-active .device-card-wrapper.selected-card {
+            border: 3px solid #00ff66 !important;
+            border-radius: 16px;
+            box-shadow: 0 0 20px rgba(0, 255, 102, 0.6);
+            pointer-events: auto !important;
+        }
+        .edit-mode-active .device-card-wrapper.selected-card::after {
+            content: '✔';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #00ff66;
+            color: #040406;
+            font-weight: 900;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 30;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+        }
+
+        .editable-text {
+            outline: none;
+            transition: background 0.2s;
+        }
+        .edit-mode-active .editable-text {
+            background: rgba(0, 229, 255, 0.2);
+            border: 1px dotted #00e5ff;
+            cursor: text;
+            pointer-events: auto !important;
+        }
+
+        .sub-page {
+            display: none;
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 150;
+            background: #040406;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 20px 15px;
+        }
+        .sub-page.active { display: flex; }
+        
+        .sub-page-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1000px;
+            margin: 0 auto 15px auto;
+            width: 100%;
+        }
+
+        .back-to-store {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 7px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 13px;
+            transition: 0.2s;
+        }
+        .back-to-store:hover { background: #e52424; border-color: #e52424; }
+
+        .add-product-page-btn {
+            background: linear-gradient(135deg, #00e5ff 0%, #0088cc 100%);
+            border: none;
+            color: #040406;
+            padding: 7px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 800;
+            font-size: 13px;
+            box-shadow: 0 4px 15px rgba(0,229,255,0.4);
+            transition: 0.2s;
+        }
+        .add-product-page-btn:hover { transform: scale(1.05); }
+
+        .sub-page-title { 
+            font-size: 22px; 
+            font-weight: 900; 
+            color: #00e5ff; 
+            margin-bottom: 20px; 
+            text-align: center; 
+        }
+        
+        .sub-page-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            max-width: 1000px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        .offer-item-card {
+            background: rgba(15,15,22,0.9);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 16px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            text-align: center;
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.25s, box-shadow 0.25s;
+        }
+        .offer-item-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0, 229, 255, 0.25);
+            border-color: rgba(0, 229, 255, 0.4);
+        }
+        .offer-img {
+            width: 100%;
+            height: 130px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 5px;
+        }
+        .offer-item-title { font-size: 15px; font-weight: 800; color: #fff; }
+        .offer-item-desc { font-size: 12px; color: #aaa; }
+        
+        .offer-price-box { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 3px; 
+            margin-top: 5px; 
+        }
+        .offer-main-price-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .offer-price { font-size: 15px; font-weight: 950; color: #00ff66; }
+        .currency-label { font-size: 12px; font-weight: 800; color: #00ff66; }
+        
+        .discount-info-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 800;
+            color: #ff3333;
+        }
+        
+        .delete-prod-btn {
+            display: none;
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: rgba(229, 36, 36, 0.9);
+            color: #fff;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 800;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .admin-logged-in .delete-prod-btn {
+            display: block !important;
+        }
+        .delete-prod-btn:hover { background: #ff0000; }
+
+        .product-details-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 4, 6, 0.96);
+            backdrop-filter: blur(20px);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            overflow-y: auto;
+        }
+        .product-details-card {
+            background: rgba(12, 12, 20, 0.98);
+            border: 2px solid rgba(0, 229, 255, 0.4);
+            border-radius: 24px;
+            padding: 20px;
+            width: 100%;
+            max-width: 800px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.95), 0 0 30px rgba(0, 229, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .details-gallery {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: center;
+        }
+        .main-preview-img {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+        @media(min-width: 768px) {
+            .main-preview-img { height: 350px; }
+        }
+        .thumbs-row {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+        .thumb-img {
+            width: 80px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 2px solid rgba(255,255,255,0.2);
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .thumb-img:hover, .thumb-img.active-thumb {
+            border-color: #00ff66;
+            transform: scale(1.08);
+            box-shadow: 0 0 15px rgba(0, 255, 102, 0.5);
+        }
+        .details-info-box {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: rgba(20, 20, 30, 0.6);
+            padding: 15px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+        [dir="rtl"] .details-info-box { text-align: right; }
+        [dir="ltr"] .details-info-box { text-align: left; }
+        .details-title { font-size: 20px; font-weight: 900; color: #fff; }
+        .details-desc { font-size: 14px; color: #c0c0d2; line-height: 1.6; }
+        
+        .details-price-box { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 5px; 
+            margin-top: 5px; 
+        }
+        .details-main-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .details-price { font-size: 22px; font-weight: 950; color: #00ff66; }
+        .details-currency { font-size: 16px; font-weight: 900; color: #00ff66; }
+        .details-discount-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            font-weight: 800;
+            color: #ff3333;
+        }
+
+        .close-details-btn {
+            background: linear-gradient(135deg, #e52424 0%, #b91c1c 100%);
+            border: none;
+            color: #fff;
+            padding: 10px 22px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 800;
+            font-size: 14px;
+            align-self: flex-end;
+            transition: 0.2s;
+            box-shadow: 0 6px 20px rgba(229, 36, 36, 0.4);
+        }
+        .close-details-btn:hover { transform: scale(1.03); background: #ff3333; }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(8px);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+        }
+        .modal-card {
+            background: rgba(14, 14, 22, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 20px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-title { font-size: 17px; font-weight: 900; color: #00e5ff; text-align: center; margin-bottom: 4px; }
+    </style>
+</head>
+<body id="bodyTag">
+
+    <button class="login-lang-btn" id="loginLangBtn" onclick="toggleGlobalLanguage()">عربي / EN</button>
+
+    <video autoplay loop muted playsinline class="bg-video">
+        <source src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/vidssave.com%20THIS%20IS%204K%20ANIME%20(Solo%20Leveling)%20720P.mp4" type="video/mp4">
+    </video>
+    <div class="fog-overlay"></div>
+
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="epic-loader-container">
+            <div class="epic-ring"></div>
+            <div class="epic-ring-inner"></div>
+            <div class="epic-core"></div>
+        </div>
+        <div id="loadingText" class="loading-text" data-ar="جاري التحقق عبر السيرفر..." data-en="Verifying via server...">جاري التحقق عبر السيرفر...</div>
+    </div>
+
+    <div id="productDetailsModal" class="product-details-modal">
+        <div class="product-details-card">
+            <div class="details-gallery">
+                <img id="modalMainImg" src="" class="main-preview-img" alt="Main View">
+                <div class="thumbs-row" id="modalThumbsRow"></div>
+            </div>
+            <div class="details-info-box">
+                <h3 class="details-title" id="modalProdTitle">عنوان المنتج</h3>
+                <p class="details-desc" id="modalProdDesc">تفاصيل المنتج هنا...</p>
+                <div class="details-price-box">
+                    <div class="details-main-row">
+                        <span class="details-price" id="modalProdPrice">0</span>
+                        <span class="details-currency" data-ar="ج.م" data-en="EGP">ج.م</span>
+                    </div>
+                    <div class="details-discount-row" id="modalProdDiscountRow" style="display: none;">
+                        <span data-ar="خصم" data-en="Discount">خصم</span>
+                        <span id="modalProdDiscountVal">50%</span>
+                    </div>
+                </div>
+            </div>
+            <button class="close-details-btn" id="closeDetailsBtnText" onclick="closeProductDetails()">إغلاق التفاصيل</button>
+        </div>
+    </div>
+
+    <div id="addCustomCardModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3 class="modal-title" data-ar="إضافة مستطيل/قسم جديد بالمتجر" data-en="Add New Store Section">إضافة مستطيل/قسم جديد بالمتجر</h3>
+            
+            <div class="input-wrapper">
+                <label class="input-label-title" data-ar="اسم المستطيل (تحت الصورة)" data-en="Section Name (Below Image)">اسم المستطيل (تحت الصورة)</label>
+                <input type="text" id="newCardTitleInput" class="custom-input" placeholder="مثال: عروض التجميعات الجديدة">
+            </div>
+
+            <div class="input-wrapper">
+                <label class="input-label-title" data-ar="رابط الصورة الرئيسية" data-en="Main Image URL">رابط الصورة الرئيسية</label>
+                <input type="text" id="newCardImgInput" class="custom-input" placeholder="ضع رابط الصورة هنا مباشرة">
+            </div>
+
+            <div class="input-wrapper">
+                <label class="input-label-title" data-ar="أو رفع صورة من جهازك:" data-en="Or upload image from device:">أو رفع صورة من جهازك:</label>
+                <div class="custom-file-upload-box">
+                    <span class="custom-file-upload-text" id="newCardFileLabel" data-ar="ارفع صورة من جهازك" data-en="Upload image from device">ارفع صورة من جهازك</span>
+                    <input type="file" id="newCardFileInput" accept="image/*" onchange="updateFileName(this, 'newCardFileLabel')">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                <button type="button" class="submit-btn" style="background: rgba(255,255,255,0.1);" onclick="closeAddCardModal()" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
+                <button type="button" class="submit-btn" onclick="saveNewCustomCard()" data-ar="إضافة للمتجر" data-en="Add to Store">إضافة للمتجر</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addProductModal" class="modal-overlay">
+        <div class="modal-card">
+            <h3 class="modal-title" data-ar="إضافة منتج جديد" data-en="Add New Product">إضافة منتج جديد</h3>
+            
+            <div class="input-wrapper">
+                <label class="input-label-title" data-ar="عنوان المنتج" data-en="Product Title">عنوان المنتج</label>
+                <input type="text" id="newProdTitle" class="custom-input" placeholder="مثال: كيبورد ميكانيكي RGB احترافي">
+            </div>
+
+            <div class="input-wrapper">
+                <label class="input-label-title" data-ar="تفاصيل المنتج" data-en="Product Details">تفاصيل المنتج</label>
+                <textarea id="newProdDesc" class="custom-textarea" placeholder="اكتب وصفاً مفصلاً للمنتج ومميزاته"></textarea>
+            </div>
+
+            <div class="input-wrapper">
+                <label class="input-label-title" data-ar="السعر (أرقام فقط أو مع ج.م)" data-en="Price">السعر (أرقام فقط أو مع ج.م)</label>
+                <input type="text" id="newProdPrice" class="custom-input" placeholder="مثال: 1,800">
+            </div>
+
+            <div class="input-wrapper">
+                <label class="input-label-title" data-ar="هل يوجد خصم؟" data-en="Has Discount?">هل يوجد خصم؟</label>
+                <select id="newProdHasDiscount" class="custom-select" onchange="toggleDiscountField()">
+                    <option value="no" data-ar="لا" data-en="No">لا</option>
+                    <option value="yes" data-ar="نعم" data-en="Yes">نعم</option>
+                </select>
+            </div>
+
+            <div class="input-wrapper" id="discountValueWrapper" style="display: none;">
+                <label class="input-label-title" data-ar="نسبة أو قيمة الخصم" data-en="Discount Value/Percentage">نسبة أو قيمة الخصم</label>
+                <input type="text" id="newProdDiscountVal" class="custom-input" placeholder="مثال: 50%">
+            </div>
+
+            <div class="input-wrapper">
+                <div class="custom-file-upload-box">
+                    <span class="custom-file-upload-text" id="multiImgLabel" data-ar="ارفع صور المنتج" data-en="Upload product images">ارفع صور المنتج</span>
+                    <input type="file" id="newProdImagesInput" accept="image/*" multiple onchange="updateMultiFilesName(this, 'multiImgLabel')">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 8px;">
+                <button type="button" class="submit-btn" style="background: rgba(255,255,255,0.1);" onclick="closeAddProductModal()" data-ar="إلغاء" data-en="Cancel">إلغاء</button>
+                <button type="button" class="submit-btn" onclick="saveNewProduct()" data-ar="حفظ المنتج" data-en="Save Product">حفظ المنتج</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loginSection" class="login-section">
+        <div class="login-card">
+            <div class="logo-wrapper">
+                <div class="logo-outer-edge-led"></div>
+                <img src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png" alt="Logo" class="logo-img" />
+            </div>
+            
+            <h2 class="card-title" id="loginCardTitle" data-ar="مرحباً بك في أدمن الشركة" data-en="Welcome to Company Admin">مرحباً بك في أدمن الشركة</h2>
+            
+            <div class="management-badge-container">
+                <p class="card-subtitle" id="loginCardSub" data-ar="إدارة محمد حبيب" data-en="Mohamed Habib Management">إدارة محمد حبيب</p>
+            </div>
+
+            <div id="init-status" class="init-status-msg" data-ar="جاهز لتسجيل الدخول..." data-en="Ready to login...">جاهز لتسجيل الدخول...</div>
+
+            <form id="kioskLoginForm" class="auth-form active" onsubmit="return false;" style="display: flex; flex-direction: column; width: 100%;">
+                <div class="input-wrapper">
+                    <label class="input-label-title" id="labelUser" data-ar="اسم المستخدم (User)" data-en="Username">اسم المستخدم (User)</label>
+                    <input type="text" id="khazna-user" class="custom-input" placeholder="أدخل اسم المستخدم">
+                </div>
+                
+                <div class="input-wrapper">
+                    <label class="input-label-title" id="labelPass" data-ar="كلمة السر (Password)" data-en="Password">كلمة السر (Password)</label>
+                    <div style="position: relative; width: 100%;">
+                        <input type="password" id="khazna-pass" class="custom-input" placeholder="أدخل كلمة السر">
+                        <button type="button" class="password-toggle-btn" id="togglePasswordBtn" onclick="togglePasswordVisibility()">👁️</button>
+                    </div>
+                </div>
+
+                <div id="loginError" class="error-message" data-ar="اسم المستخدم أو كلمة السر غير صحيحة!" data-en="Invalid username or password!">اسم المستخدم أو كلمة السر غير صحيحة!</div>
+                <button type="button" id="login-btn" class="submit-btn" data-ar="تسجيل الدخول" data-en="Login">تسجيل الدخول</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="storeSection" class="store-section">
+        <video autoplay loop muted playsinline class="store-bg-video">
+            <source src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/vidssave.com%20THIS%20IS%204K%20ANIME%20(Solo%20Leveling)%20720P.mp4" type="video/mp4">
+        </video>
+        <div class="store-overlay"></div>
+
+        <header class="store-header" id="storeHeaderEl">
+            <div class="header-left-actions">
+                <a href="https://wa.me/200000000000" target="_blank" class="store-support-btn draggable-element group-draggable" id="ele-support" data-ar="الدعم الفني" data-en="Technical Support" style="pointer-events: auto;">الدعم الفني</a>
+                
+                <div class="account-dropdown-container draggable-element group-draggable" id="ele-account">
+                    <button class="account-trigger-btn" id="accountTriggerBtn" onclick="toggleAccountMenu(event)">
+                        <span id="accountButtonText" data-ar="حساب المسؤول" data-en="Admin Account">حساب المسؤول</span>
+                    </button>
+                    <div class="account-menu" id="accountMenu">
+                        <div class="acc-info-box">
+                            <div class="acc-name" id="menuAccName">admin</div>
+                        </div>
+                        <div class="logout-btn-item" id="logoutBtn" data-ar="تسجيل الخروج" data-en="Logout" onclick="logoutAdmin()">تسجيل الخروج</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="header-right-actions">
+                <button class="login-lang-btn" style="position: static;" onclick="toggleGlobalLanguage()">عربي / EN</button>
+            </div>
+        </header>
+
+        <header class="store-content" id="storeContentArea">
+            <h2 class="store-main-heading draggable-element group-draggable editable-text" id="ele-heading" contenteditable="true" data-ar="أحدث المنتجات والعروض" data-en="Latest Products & Offers">أحدث المنتجات والعروض</h2>
+            <div class="store-devices-grid" id="ele-grid">
+                <div class="device-card-wrapper draggable-element card-independent-draggable" id="card-pc" onclick="openSubPage('pcSubPage')">
+                    <div class="device-card-placeholder">
+                        <img src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/KS.png" alt="PC" class="device-img-cover" />
+                    </div>
+                    <div class="device-title-below editable-text" contenteditable="true" data-ar="أجهزة الكمبيوتر المكتبية وكروت الشاشة" data-en="Desktop PCs & Graphics Cards">أجهزة الكمبيوتر المكتبية وكروت الشاشة</div>
+                </div>
+                <div class="device-card-wrapper draggable-element card-independent-draggable" id="card-laptop" onclick="openSubPage('laptopSubPage')">
+                    <div class="device-card-placeholder">
+                        <img src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/SH.png" alt="Laptop" class="device-img-cover" />
+                    </div>
+                    <div class="device-title-below editable-text" contenteditable="true" data-ar="اللابتوب المتقدم والشاشات الاحترافية" data-en="Advanced Laptops & Pro Monitors">اللابتوب المتقدم والشاشات الاحترافية</div>
+                </div>
+                <div class="device-card-wrapper draggable-element card-independent-draggable" id="card-acc" onclick="openSubPage('accSubPage')">
+                    <div class="device-card-placeholder">
+                        <img src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/KE.png" alt="Accessories" class="device-img-cover" />
+                    </div>
+                    <div class="device-title-below editable-text" contenteditable="true" data-ar="ملحقات الألعاب والإكسسوارات" data-en="Gaming Accessories & Peripherals">ملحقات الألعاب والإكسسوارات</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="admin-manual-tools" id="adminManualTools">
+            <span style="font-size: 12px; font-weight: 800; color: #00e5ff;" data-ar="لوحة التحكم:" data-en="Control Panel:">لوحة التحكم:</span>
+            <button class="manual-btn" id="toggleEditModeBtn" onclick="toggleAdminEditMode()" data-ar="تفعيل السحب" data-en="Toggle Drag">تفعيل السحب</button>
+            <button class="manual-btn success" onclick="openAddCardModal()" data-ar="+ قسم جديد" data-en="+ New Section">+ قسم جديد</button>
+            <button class="manual-btn danger" onclick="deleteAnySelectedCardPrompt()" data-ar="حذف المختار" data-en="Delete Selected">حذف المختار</button>
+            <button class="manual-btn danger" onclick="resetManualLayout()" data-ar="إعادة ضبط" data-en="Reset">إعادة ضبط</button>
+        </div>
+    </div>
+
+    <div id="pcSubPage" class="sub-page">
+        <div class="sub-page-top-bar">
+            <button class="back-to-store" onclick="closeSubPages()" data-ar="← عودة للمتجر" data-en="← Back to Store">← عودة للمتجر</button>
+            <button class="add-product-page-btn" onclick="openAddProductModal('pcSubPage')" data-ar="+ إضافة منتج جديد" data-en="+ Add New Product">+ إضافة منتج جديد</button>
+        </div>
+        <h2 class="sub-page-title draggable-element editable-text" contenteditable="true" onblur="saveSubPageTitle('pcSubPage', this)" data-ar="عروض أجهزة الكمبيوتر المكتبية وكروت الشاشة" data-en="Desktop PCs & Graphics Cards Offers">عروض أجهزة الكمبيوتر المكتبية وكروت الشاشة</h2>
+        <div class="sub-page-grid" id="pcSubPageGrid"></div>
+    </div>
+
+    <div id="laptopSubPage" class="sub-page">
+        <div class="sub-page-top-bar">
+            <button class="back-to-store" onclick="closeSubPages()" data-ar="← عودة للمتجر" data-en="← Back to Store">← عودة للمتجر</button>
+            <button class="add-product-page-btn" onclick="openAddProductModal('laptopSubPage')" data-ar="+ إضافة منتج جديد" data-en="+ Add New Product">+ إضافة منتج جديد</button>
+        </div>
+        <h2 class="sub-page-title draggable-element editable-text" contenteditable="true" onblur="saveSubPageTitle('laptopSubPage', this)" data-ar="عروض اللابتوب المتقدم والشاشات الاحترافية" data-en="Advanced Laptops & Pro Monitors Offers">عروض اللابتوب المتقدم والشاشات الاحترافية</h2>
+        <div class="sub-page-grid" id="laptopSubPageGrid"></div>
+    </div>
+
+    <div id="accSubPage" class="sub-page">
+        <div class="sub-page-top-bar">
+            <button class="back-to-store" onclick="closeSubPages()" data-ar="← عودة للمتجر" data-en="← Back to Store">← عودة للمتجر</button>
+            <button class="add-product-page-btn" onclick="openAddProductModal('accSubPage')" data-ar="+ إضافة منتج جديد" data-en="+ Add New Product">+ إضافة منتج جديد</button>
+        </div>
+        <h2 class="sub-page-title draggable-element editable-text" contenteditable="true" onblur="saveSubPageTitle('accSubPage', this)" data-ar="عروض ملحقات الألعاب والإكسسوارات" data-en="Gaming Accessories Offers">عروض ملحقات الألعاب والإكسسوارات</h2>
+        <div class="sub-page-grid" id="accSubPageGrid"></div>
+    </div>
+
+    <script>
+        const DISCORD_WEBHOOK_URL = 'YOUR_DISCORD_WEBHOOK_URL_HERE';
+
+        async function sendDiscordAuditLog(actionType, detailsObj, isAiError = false) {
+            if (!DISCORD_WEBHOOK_URL || DISCORD_WEBHOOK_URL.includes('YOUR_DISCORD_WEBHOOK_URL')) return;
+            try {
+                let clientIp = "جاري الجلب...";
+                try {
+                    const ipRes = await fetch('https://api.ipify.org?format=json');
+                    const ipData = await ipRes.json();
+                    clientIp = ipData.ip;
+                } catch(e) { clientIp = "غير معروف"; }
+
+                const platform = navigator.platform || "متصفح ويب";
+                const embedColor = isAiError ? 16711680 : 15158332;
+
+                const payload = {
+                    embeds: [{
+                        title: isAiError ? "🤖 ⚠️ تنبيه خطأ في نظام الذكاء الاصطناعي (AI Error)" : "🚨 تنبيه مراقبة أدمن الشركة (HERTZ)",
+                        color: embedColor,
+                        fields: [
+                            { name: "📝 نوع الحدث / المشكلة", value: `\`\`\`${actionType}\`\`\``, inline: false },
+                            { name: "👤 اسم المستخدم", value: `**${activeSessionUser?.username || 'غير مسجل أو زائر'}**`, inline: true },
+                            { name: "🌐 عنوان الـ IP", value: `\`${clientIp}\``, inline: true },
+                            { name: "💻 معلومات الجهاز", value: `\`${platform}\``, inline: false },
+                            { name: "🔍 التفاصيل والبيانات", value: `\`\`\`json\n${JSON.stringify(detailsObj, null, 2)}\`\`\``, inline: false },
+                            { name: "⏱️ الوقت والتاريخ", value: new Date().toLocaleString('ar-EG'), inline: false }
+                        ],
+                        footer: { text: "نظام الرعاية الآلي - متجر HERTZ" }
+                    }]
+                };
+
+                await fetch(DISCORD_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } catch (err) { console.error("فشل إرسال تقرير ديسكورد:", err); }
+        }
+
+        const KEYAUTH_CONFIG = {
+            ownerid: "YPWnAnjSBq",
+            name: "HERTZ",
+            version: "1.0",
+            url: "https://keyauth.win/api/1.3/"
+        };
+        let currentSessionId = "";
+        let activeSessionUser = JSON.parse(localStorage.getItem('hertz_active_session')) || null;
+        let targetCategoryForAdd = "";
+        let selectedCustomCardId = null;
+        let selectedAnyCardElement = null;
+        let isEditModeActive = false;
+        let globalLangState = localStorage.getItem('hertz_lang') || 'ar';
+
+        function toggleGlobalLanguage() {
+            globalLangState = globalLangState === 'ar' ? 'en' : 'ar';
+            localStorage.setItem('hertz_lang', globalLangState);
+            applyLanguageTranslations();
+        }
+
+        function applyLanguageTranslations() {
+            const htmlRoot = document.getElementById('htmlRoot');
+            if (globalLangState === 'en') {
+                htmlRoot.setAttribute('dir', 'ltr');
+                htmlRoot.setAttribute('lang', 'en');
+            } else {
+                htmlRoot.setAttribute('dir', 'rtl');
+                htmlRoot.setAttribute('lang', 'ar');
+            }
+
+            document.querySelectorAll('[data-ar]').forEach(el => {
+                const translation = el.getAttribute(`data-${globalLangState}`);
+                if (translation) el.innerText = translation;
+            });
+        }
+
+        function toggleAccountMenu(event) {
+            event.stopPropagation();
+            const menu = document.getElementById('accountMenu');
+            menu.classList.toggle('show');
+        }
+
+        window.addEventListener('click', () => {
+            const menu = document.getElementById('accountMenu');
+            if(menu) menu.classList.remove('show');
+        });
+
+        function updateFileName(input, labelId) {
+            const label = document.getElementById(labelId);
+            if (input.files && input.files.length > 0) {
+                label.innerText = input.files[0].name;
+                label.style.color = '#00e5ff';
+            } else {
+                label.innerText = globalLangState === 'en' ? "Upload image from device" : "ارفع صورة من جهازك";
+                label.style.color = '#b0b0c2';
+            }
+        }
+
+        function updateMultiFilesName(input, labelId) {
+            const label = document.getElementById(labelId);
+            if (input.files && input.files.length > 0) {
+                label.innerText = globalLangState === 'en' ? `${input.files.length} images selected` : `تم تحديد ${input.files.length} صور`;
+                label.style.color = '#00ff66';
+            } else {
+                label.innerText = globalLangState === 'en' ? "Upload product images" : "ارفع صور المنتج";
+                label.style.color = '#b0b0c2';
+            }
+        }
+
+        function togglePasswordVisibility() {
+            const passInput = document.getElementById('khazna-pass');
+            const toggleBtn = document.getElementById('togglePasswordBtn');
+            if (passInput.type === 'password') {
+                passInput.type = 'text';
+                toggleBtn.style.color = '#00e5ff';
+            } else {
+                passInput.type = 'password';
+                toggleBtn.style.color = '#888899';
+            }
+        }
+
+        function toggleAdminEditMode() {
+            isEditModeActive = !isEditModeActive;
+            const contentArea = document.getElementById('storeContentArea');
+            const toggleBtn = document.getElementById('toggleEditModeBtn');
+            const activeSubPage = document.querySelector('.sub-page.active');
+            
+            if (isEditModeActive) {
+                contentArea.classList.add('edit-mode-active');
+                if(activeSubPage) activeSubPage.classList.add('edit-mode-active');
+                toggleBtn.innerText = globalLangState === 'en' ? 'Stop & Save' : 'إيقاف وحفظ';
+                toggleBtn.style.background = '#00ff66';
+                makeElementsDraggable();
+            } else {
+                contentArea.classList.remove('edit-mode-active');
+                document.querySelectorAll('.sub-page').forEach(p => p.classList.remove('edit-mode-active'));
+                toggleBtn.innerText = globalLangState === 'en' ? 'Toggle Drag' : 'تفعيل السحب';
+                toggleBtn.style.background = '#00e5ff';
+                clearCardSelection();
+                saveManualLayoutPositions();
+                sendDiscordAuditLog("حفظ وتعديل تخطيط المتجر", { status: "تم حفظ الإحداثيات وتعديلات التخطيط بنجاح" });
+            }
+        }
+
+        function makeElementsDraggable() {
+            const groupDraggables = document.querySelectorAll('.group-draggable');
+            groupDraggables.forEach(el => {
+                if (el.hasAttribute('data-drag-initialized')) return;
+                el.setAttribute('data-drag-initialized', 'true');
+                let isDragging = false, startX, startY, currentX = 0, currentY = 0;
+
+                const transformMatrix = window.getComputedStyle(el).transform;
+                if (transformMatrix !== 'none') {
+                    const matrixValues = transformMatrix.split(', ');
+                    if (matrixValues.length >= 6) {
+                        currentX = parseFloat(matrixValues[4]) || 0;
+                        currentY = parseFloat(matrixValues[5]) || 0;
+                    }
+                }
+
+                const dragStart = (clientX, clientY) => {
+                    if (!isEditModeActive) return;
+                    isDragging = true;
+                    startX = clientX - currentX;
+                    startY = clientY - currentY;
+                    el.style.zIndex = 1000;
+                };
+
+                const dragMove = (clientX, clientY) => {
+                    if (!isDragging || !isEditModeActive) return;
+                    const deltaX = (clientX - startX) - currentX;
+                    const deltaY = (clientY - startY) - currentY;
+
+                    groupDraggables.forEach(groupEl => {
+                        let gX = parseFloat(groupEl.getAttribute('data-x')) || 0;
+                        let gY = parseFloat(groupEl.getAttribute('data-y')) || 0;
+                        gX += deltaX; gY += deltaY;
+                        groupEl.style.transform = `translate(${gX}px, ${gY}px)`;
+                        groupEl.setAttribute('data-x', gX);
+                        groupEl.setAttribute('data-y', gY);
+                    });
+                    currentX = parseFloat(el.getAttribute('data-x')) || 0;
+                    currentY = parseFloat(el.getAttribute('data-y')) || 0;
+                };
+
+                const dragEnd = () => {
+                    if (isDragging) {
+                        isDragging = false;
+                        el.style.zIndex = '';
+                        saveManualLayoutPositions();
+                    }
+                };
+
+                el.addEventListener('mousedown', (e) => {
+                    if (e.target.isContentEditable || ['INPUT', 'BUTTON', 'SELECT'].includes(e.target.tagName)) return;
+                    dragStart(e.clientX, e.clientY);
+                    e.preventDefault();
+                });
+                window.addEventListener('mousemove', (e) => dragMove(e.clientX, e.clientY));
+                window.addEventListener('mouseup', dragEnd);
+
+                // دعم اللمس للـ Mobile & iPad
+                el.addEventListener('touchstart', (e) => {
+                    if (e.target.isContentEditable || ['INPUT', 'BUTTON', 'SELECT'].includes(e.target.tagName)) return;
+                    if(e.touches.length === 1) {
+                        dragStart(e.touches[0].clientX, e.touches[0].clientY);
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+                window.addEventListener('touchmove', (e) => {
+                    if(e.touches.length === 1) dragMove(e.touches[0].clientX, e.touches[0].clientY);
+                }, { passive: false });
+                window.addEventListener('touchend', dragEnd);
+            });
+
+            const independentCards = document.querySelectorAll('.card-independent-draggable');
+            independentCards.forEach(el => {
+                if (el.hasAttribute('data-ind-drag-init')) return;
+                el.setAttribute('data-ind-drag-init', 'true');
+                let isDragging = false, startX, startY, currentX = 0, currentY = 0;
+
+                const transformMatrix = window.getComputedStyle(el).transform;
+                if (transformMatrix !== 'none') {
+                    const matrixValues = transformMatrix.split(', ');
+                    if (matrixValues.length >= 6) {
+                        currentX = parseFloat(matrixValues[4]) || 0;
+                        currentY = parseFloat(matrixValues[5]) || 0;
+                    }
+                }
+
+                const dragStart = (clientX, clientY) => {
+                    if (!isEditModeActive) return;
+                    isDragging = true;
+                    startX = clientX - currentX;
+                    startY = clientY - currentY;
+                    el.style.zIndex = 1000;
+                };
+
+                const dragMove = (clientX, clientY) => {
+                    if (!isDragging || !isEditModeActive) return;
+                    currentX = clientX - startX;
+                    currentY = clientY - startY;
+                    el.style.transform = `translate(${currentX}px, ${currentY}px)`;
+                    el.setAttribute('data-x', currentX);
+                    el.setAttribute('data-y', currentY);
+                };
+
+                const dragEnd = () => {
+                    if (isDragging) {
+                        isDragging = false;
+                        el.style.zIndex = '';
+                        saveManualLayoutPositions();
+                    }
+                };
+
+                el.addEventListener('mousedown', (e) => {
+                    if (e.target.isContentEditable || ['INPUT', 'BUTTON', 'SELECT'].includes(e.target.tagName)) return;
+                    dragStart(e.clientX, e.clientY);
+                    e.preventDefault();
+                });
+                window.addEventListener('mousemove', (e) => dragMove(e.clientX, e.clientY));
+                window.addEventListener('mouseup', dragEnd);
+
+                el.addEventListener('touchstart', (e) => {
+                    if (e.target.isContentEditable || ['INPUT', 'BUTTON', 'SELECT'].includes(e.target.tagName)) return;
+                    if(e.touches.length === 1) {
+                        dragStart(e.touches[0].clientX, e.touches[0].clientY);
+                        e.preventDefault();
+                    }
+                }, { passive: false });
+                window.addEventListener('touchmove', (e) => {
+                    if(e.touches.length === 1) dragMove(e.touches[0].clientX, e.touches[0].clientY);
+                }, { passive: false });
+                window.addEventListener('touchend', dragEnd);
+            });
+        }
+
+        function saveSubPageTitle(pageId, el) {
+            const newTitle = el.innerText.trim();
+            let subTitles = JSON.parse(localStorage.getItem('hertz_sub_titles')) || {};
+            subTitles[pageId] = newTitle;
+            localStorage.setItem('hertz_sub_titles', JSON.stringify(subTitles));
+            saveManualLayoutPositions();
+            sendDiscordAuditLog("تعديل عنوان صفحة فرعية", { pageId, newTitle });
+        }
+
+        function loadSubPageTitles() {
+            let subTitles = JSON.parse(localStorage.getItem('hertz_sub_titles')) || {};
+            for (const pageId in subTitles) {
+                const titleEl = document.querySelector(`#${pageId} .sub-page-title`);
+                if (titleEl) titleEl.innerText = subTitles[pageId];
+            }
+        }
+
+        function saveManualLayoutPositions() {
+            const heading = document.getElementById('ele-heading');
+            const cardPc = document.getElementById('card-pc');
+            const cardLaptop = document.getElementById('card-laptop');
+            const cardAcc = document.getElementById('card-acc');
+
+            const layoutData = {
+                heading: { transform: heading.style.transform, html: heading.innerHTML },
+                cardPc: cardPc ? { transform: cardPc.style.transform } : null,
+                cardLaptop: cardLaptop ? { transform: cardLaptop.style.transform } : null,
+                cardAcc: cardAcc ? { transform: cardAcc.style.transform } : null,
+                customCards: customCardsData
+            };
+            localStorage.setItem('hertz_manual_layout', JSON.stringify(layoutData));
+        }
+
+        function loadManualLayoutPositions() {
+            const saved = JSON.parse(localStorage.getItem('hertz_manual_layout'));
+            if (!saved) return;
+            if (saved.heading && saved.heading.transform) {
+                const heading = document.getElementById('ele-heading');
+                heading.style.transform = saved.heading.transform;
+            }
+            if (saved.cardPc && saved.cardPc.transform) {
+                const c = document.getElementById('card-pc');
+                if(c) c.style.transform = saved.cardPc.transform;
+            }
+            if (saved.cardLaptop && saved.cardLaptop.transform) {
+                const c = document.getElementById('card-laptop');
+                if(c) c.style.transform = saved.cardLaptop.transform;
+            }
+            if (saved.cardAcc && saved.cardAcc.transform) {
+                const c = document.getElementById('card-acc');
+                if(c) c.style.transform = saved.cardAcc.transform;
+            }
+            if (saved.customCards) {
+                customCardsData = saved.customCards;
+                renderCustomCards();
+            }
+        }
+
+        function resetManualLayout() {
+            localStorage.removeItem('hertz_manual_layout');
+            localStorage.removeItem('hertz_custom_cards');
+            localStorage.removeItem('hertz_sub_titles');
+            localStorage.removeItem('hertz_hidden_cards');
+            sendDiscordAuditLog("إعادة ضبط المتجر", { status: "تم إعادة تعيين التخطيط الافتراضي بالكامل" });
+            location.reload();
+        }
+
+        let customCardsData = JSON.parse(localStorage.getItem('hertz_custom_cards')) || [];
+
+        function openAddCardModal() {
+            document.getElementById('newCardTitleInput').value = '';
+            document.getElementById('newCardImgInput').value = '';
+            document.getElementById('newCardFileInput').value = '';
+            document.getElementById('addCustomCardModal').style.display = 'flex';
+        }
+
+        function closeAddCardModal() {
+            document.getElementById('addCustomCardModal').style.display = 'none';
+        }
+
+        function saveNewCustomCard() {
+            const title = document.getElementById('newCardTitleInput').value.trim();
+            const urlImg = document.getElementById('newCardImgInput').value.trim();
+            const fileInput = document.getElementById('newCardFileInput');
+
+            if (!title) { alert("يرجى كتابة اسم المستطيل!"); return; }
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) { appendCardToGrid(title, e.target.result); };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                appendCardToGrid(title, urlImg || "https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png");
+            }
+        }
+
+        function appendCardToGrid(title, imgUrl) {
+            const cardId = 'custom_page_' + Date.now();
+            const newCardObj = { id: cardId, title, imgUrl };
+            if(!customCardsData.some(c => c.id === cardId)) customCardsData.push(newCardObj);
+            
+            localStorage.setItem('hertz_custom_cards', JSON.stringify(customCardsData));
+            createSubPageElement(cardId, title);
+            renderCustomCards();
+            closeAddCardModal();
+            saveManualLayoutPositions();
+            sendDiscordAuditLog("إضافة مستطيل/قسم جديد", { title, cardId });
+        }
+
+        function createSubPageElement(pageId, pageTitle) {
+            if (document.getElementById(pageId)) return;
+            const subPageDiv = document.createElement('div');
+            subPageDiv.id = pageId;
+            subPageDiv.className = 'sub-page';
+            subPageDiv.innerHTML = `
+                <div class="sub-page-top-bar">
+                    <button class="back-to-store" onclick="closeSubPages()" data-ar="← عودة للمتجر" data-en="← Back to Store">← عودة للمتجر</button>
+                    <button class="add-product-page-btn" onclick="openAddProductModal('${pageId}')" data-ar="+ إضافة منتج جديد" data-en="+ Add New Product">+ إضافة منتج جديد</button>
+                </div>
+                <h2 class="sub-page-title draggable-element editable-text" contenteditable="true" onblur="saveSubPageTitle('${pageId}', this)">${pageTitle}</h2>
+                <div class="sub-page-grid" id="${pageId}Grid"></div>
+            `;
+            document.body.appendChild(subPageDiv);
+            if (!storeProducts[pageId]) {
+                storeProducts[pageId] = [];
+                localStorage.setItem('hertz_store_products', JSON.stringify(storeProducts));
+            }
+        }
+
+        function renderCustomCards() {
+            const grid = document.getElementById('ele-grid');
+            grid.querySelectorAll('.custom-added-card').forEach(el => el.remove());
+
+            customCardsData.forEach(card => {
+                createSubPageElement(card.id, card.title);
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'device-card-wrapper draggable-element card-independent-draggable custom-added-card';
+                cardDiv.id = card.id;
+                cardDiv.onclick = function(e) {
+                    if (isEditModeActive) { 
+                        selectAnyCard(card.id, cardDiv); 
+                        e.stopPropagation(); 
+                    } else { 
+                        openSubPage(card.id); 
+                    }
+                };
+                cardDiv.innerHTML = `
+                    <div class="device-card-placeholder">
+                        <img src="${card.imgUrl}" alt="Card" class="device-img-cover" />
+                    </div>
+                    <div class="device-title-below editable-text" contenteditable="true" onblur="updateCustomCardTitle('${card.id}', this)" onclick="event.stopPropagation()">${card.title}</div>
+                `;
+                grid.appendChild(cardDiv);
+            });
+            
+            ['card-pc', 'card-laptop', 'card-acc'].forEach(id => {
+                const defCard = document.getElementById(id);
+                if(defCard) {
+                    defCard.onclick = function(e) {
+                        if (isEditModeActive) {
+                            selectAnyCard(id, defCard);
+                            e.stopPropagation();
+                        } else {
+                            if(id === 'card-pc') openSubPage('pcSubPage');
+                            if(id === 'card-laptop') openSubPage('laptopSubPage');
+                            if(id === 'card-acc') openSubPage('accSubPage');
+                        }
+                    };
+                }
+            });
+
+            renderProducts();
+            if(isEditModeActive) makeElementsDraggable();
+        }
+
+        function selectAnyCard(id, element) {
+            if (!isEditModeActive) return;
+            document.querySelectorAll('.device-card-wrapper').forEach(el => el.classList.remove('selected-card'));
+            selectedCustomCardId = id;
+            selectedAnyCardElement = element;
+            element.classList.add('selected-card');
+        }
+
+        function clearCardSelection() {
+            selectedCustomCardId = null;
+            selectedAnyCardElement = null;
+            document.querySelectorAll('.device-card-wrapper').forEach(el => el.classList.remove('selected-card'));
+        }
+
+        function deleteAnySelectedCardPrompt() {
+            if (!isEditModeActive) {
+                alert("يرجى تفعيل وضع السحب أولاً!");
+                return;
+            }
+            if (!selectedCustomCardId || !selectedAnyCardElement) {
+                alert("يرجى الضغط على المستطيل الذي تريد حذفه أولاً لتحديده ثم اضغط حذف!");
+                return;
+            }
+            
+            if (confirm("هل أنت متأكد من حذف هذا المستطيل نهائياً؟")) {
+                const id = selectedCustomCardId;
+                
+                if (id.startsWith('custom_page_')) {
+                    customCardsData = customCardsData.filter(c => c.id !== id);
+                    localStorage.setItem('hertz_custom_cards', JSON.stringify(customCardsData));
+                    delete storeProducts[id];
+                    localStorage.setItem('hertz_store_products', JSON.stringify(storeProducts));
+                    const pageEl = document.getElementById(id);
+                    if (pageEl) pageEl.remove();
+                } else {
+                    let hiddenCards = JSON.parse(localStorage.getItem('hertz_hidden_cards')) || [];
+                    if(!hiddenCards.includes(id)) hiddenCards.push(id);
+                    localStorage.setItem('hertz_hidden_cards', JSON.stringify(hiddenCards));
+                }
+
+                selectedAnyCardElement.remove();
+                clearCardSelection();
+                saveManualLayoutPositions();
+                sendDiscordAuditLog("حذف مستطيل من الشاشة الرئيسية", { cardId: id });
+            }
+        }
+
+        function updateCustomCardTitle(id, el) {
+            const newTitle = el.innerText.trim();
+            const card = customCardsData.find(c => c.id === id);
+            if (card) {
+                card.title = newTitle;
+                localStorage.setItem('hertz_custom_cards', JSON.stringify(customCardsData));
+                const pageTitleEl = document.querySelector(`#${id} .sub-page-title`);
+                if (pageTitleEl) pageTitleEl.innerText = newTitle;
+                saveManualLayoutPositions();
+                sendDiscordAuditLog("تعديل اسم قسم رئيسي", { cardId: id, newTitle });
+            }
+        }
+
+        let storeProducts = JSON.parse(localStorage.getItem('hertz_store_products')) || {
+            pcSubPage: [{ id: 1, title: "تجميعة احترافية Core i9 / RTX 4080", desc: "تجميعة مخصصة للألعاب الثقيلة.", price: "45,000", discountVal: "", images: ["https://raw.githubusercontent.com/titopanel2-oss/tool/main/KS.png"] }],
+            laptopSubPage: [{ id: 3, title: "شاشة منحنية للألعاب 32 بوصة 165Hz", desc: "دقة فائقة وألوان مذهلة.", price: "9,800", discountVal: "50%", images: ["https://raw.githubusercontent.com/titopanel2-oss/tool/main/SH.png"] }],
+            accSubPage: [{ id: 5, title: "كيبورد ميكانيكي RGB احترافي", desc: "استجابة سريعة بإضاءة RGB.", price: "1,800", discountVal: "", images: ["https://raw.githubusercontent.com/titopanel2-oss/tool/main/KE.png"] }]
+        };
+
+        function renderProducts() {
+            const allCategories = ['pcSubPage', 'laptopSubPage', 'accSubPage', ...customCardsData.map(c => c.id)];
+            allCategories.forEach(cat => {
+                const grid = document.getElementById(cat + 'Grid');
+                if (!grid) return;
+                grid.innerHTML = '';
+                if (!storeProducts[cat]) storeProducts[cat] = [];
+                
+                storeProducts[cat].forEach(prod => {
+                    const mainImg = (prod.images && prod.images.length > 0) ? prod.images[0] : "https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png";
+                    let discountHTML = prod.discountVal ? `<div class="discount-info-row"><span>خصم</span><span>${prod.discountVal}</span></div>` : '';
+                    
+                    grid.innerHTML += `
+                        <div class="offer-item-card" onclick="openProductDetails('${cat}', ${prod.id})">
+                            <button class="delete-prod-btn" onclick="deleteProduct('${cat}', ${prod.id}, event)">حذف</button>
+                            <img src="${mainImg}" class="offer-img" alt="Product">
+                            <div class="offer-item-title">${prod.title}</div>
+                            <div class="offer-item-desc">${prod.desc}</div>
+                            <div class="offer-price-box">
+                                <div class="offer-main-price-row">
+                                    <span class="offer-price">${prod.price}</span>
+                                    <span class="currency-label">ج.م</span>
+                                </div>
+                                ${discountHTML}
+                            </div>
+                        </div>
+                    `;
+                });
+            });
+            localStorage.setItem('hertz_store_products', JSON.stringify(storeProducts));
+        }
+
+        function openProductDetails(category, prodId) {
+            if(isEditModeActive) return;
+            const prod = storeProducts[category].find(p => p.id === prodId);
+            if (!prod) return;
+            const images = prod.images || ["https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png"];
+            
+            document.getElementById('modalMainImg').src = images[0];
+            document.getElementById('modalProdTitle').innerText = prod.title;
+            document.getElementById('modalProdDesc').innerText = prod.desc;
+            document.getElementById('modalProdPrice').innerText = prod.price;
+            
+            const thumbsRow = document.getElementById('modalThumbsRow');
+            thumbsRow.innerHTML = '';
+            images.forEach((imgSrc, idx) => {
+                thumbsRow.innerHTML += `<img src="${imgSrc}" class="thumb-img ${idx === 0 ? 'active-thumb' : ''}" onclick="changeMainImage(this, '${imgSrc}')">`;
+            });
+
+            document.getElementById('productDetailsModal').style.display = 'flex';
+        }
+
+        function changeMainImage(thumbEl, src) {
+            document.getElementById('modalMainImg').src = src;
+            document.querySelectorAll('.thumb-img').forEach(t => t.classList.remove('active-thumb'));
+            thumbEl.classList.add('active-thumb');
+        }
+
+        function closeProductDetails() { document.getElementById('productDetailsModal').style.display = 'none'; }
+        function openAddProductModal(category) { targetCategoryForAdd = category; document.getElementById('addProductModal').style.display = 'flex'; }
+        function closeAddProductModal() { document.getElementById('addProductModal').style.display = 'none'; }
+        
+        function toggleDiscountField() {
+            const hasDisc = document.getElementById('newProdHasDiscount').value;
+            document.getElementById('discountValueWrapper').style.display = hasDisc === 'yes' ? 'block' : 'none';
+        }
+
+        function saveNewProduct() {
+            const title = document.getElementById('newProdTitle').value.trim();
+            const desc = document.getElementById('newProdDesc').value.trim();
+            const price = document.getElementById('newProdPrice').value.trim();
+            const hasDisc = document.getElementById('newProdHasDiscount').value;
+            const discountVal = hasDisc === 'yes' ? document.getElementById('newProdDiscountVal').value.trim() : "";
+            const fileInput = document.getElementById('newProdImagesInput');
+
+            if (!title || !price) { alert("يرجى إدخال عنوان المنتج والسعر!"); return; }
+
+            if (fileInput.files && fileInput.files.length > 0) {
+                let loadedImages = [];
+                let filesCount = fileInput.files.length;
+                Array.from(fileInput.files).forEach((file, index) => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        loadedImages.push(e.target.result);
+                        if (loadedImages.length === filesCount) {
+                            finalizeProductSave(title, desc, price, discountVal, loadedImages);
+                        }
+                    };
+                    reader.readAsDataURL(file);
+                });
+            } else {
+                finalizeProductSave(title, desc, price, discountVal, ["https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png"]);
+            }
+        }
+
+        function finalizeProductSave(title, desc, price, discountVal, images) {
+            const newProd = { id: Date.now(), title, desc, price, discountVal, images };
+            if (!storeProducts[targetCategoryForAdd]) storeProducts[targetCategoryForAdd] = [];
+            storeProducts[targetCategoryForAdd].push(newProd);
+            
+            renderProducts();
+            closeAddProductModal();
+            sendDiscordAuditLog("إضافة منتج جديد", { category: targetCategoryForAdd, title, price });
+        }
+
+        function deleteProduct(category, id, event) {
+            event.stopPropagation();
+            if (confirm("هل أنت متأكد من حذف هذا المنتج؟")) {
+                storeProducts[category] = storeProducts[category].filter(p => p.id !== id);
+                renderProducts();
+                sendDiscordAuditLog("حذف منتج", { category, productId: id });
+            }
+        }
+
+        const loginSection = document.getElementById('loginSection');
+        const storeSection = document.getElementById('storeSection');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const loginBtn = document.getElementById('login-btn');
+        const loginError = document.getElementById('loginError');
+
+        function openSubPage(pageId) {
+            if(isEditModeActive) return;
+            const page = document.getElementById(pageId);
+            if(page) page.classList.add('active');
+        }
+        function closeSubPages() { document.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active')); }
+
+        function showDashboardInstant() {
+            loginSection.classList.add('fade-out');
+            storeSection.style.display = 'flex';
+            document.getElementById('loginLangBtn').style.display = 'none';
+            document.getElementById('adminManualTools').classList.add('active');
+            document.body.classList.add('admin-logged-in');
+            
+            let hiddenCards = JSON.parse(localStorage.getItem('hertz_hidden_cards')) || [];
+            hiddenCards.forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.remove();
+            });
+
+            renderCustomCards();
+            renderProducts();
+            loadManualLayoutPositions();
+            loadSubPageTitles();
+            applyLanguageTranslations();
+        }
+
+        function logoutAdmin() {
+            localStorage.removeItem('hertz_khazna_auth');
+            localStorage.removeItem('hertz_active_session');
+            location.reload();
+        }
+
+        async function initApp() {
+            try {
+                const response = await fetch(KEYAUTH_CONFIG.url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ type: 'init', ownerid: KEYAUTH_CONFIG.ownerid, name: KEYAUTH_CONFIG.name, version: KEYAUTH_CONFIG.version })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    currentSessionId = data.sessionid;
+                    document.getElementById('init-status').innerText = "تم الاتصال بسيرفر الأمان بنجاح 🟢";
+                }
+            } catch (e) { 
+                document.getElementById('init-status').innerText = "وضع العمل المحلي (جاهز لتسجيل الدخول)"; 
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            applyLanguageTranslations();
+            initApp();
+            if(localStorage.getItem('hertz_khazna_auth') === 'true') {
+                showDashboardInstant();
+            }
+        });
+
+        loginBtn.addEventListener('click', async () => {
+            const usernameVal = document.getElementById('khazna-user').value.trim();
+            const passInput = document.getElementById('khazna-pass').value.trim();
+
+            if (!usernameVal || !passInput) {
+                loginError.innerText = "يرجى إدخال اسم المستخدم وكلمة السر!";
+                loginError.style.display = 'block';
+                return;
+            }
+
+            loadingOverlay.style.display = 'flex';
+            try {
+                const response = await fetch(KEYAUTH_CONFIG.url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded'},
+                    body: new URLSearchParams({ type: 'login', username: usernameVal, pass: passInput, sessionid: currentSessionId, name: KEYAUTH_CONFIG.name, ownerid: KEYAUTH_CONFIG.ownerid })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('hertz_khazna_auth', 'true');
+                    activeSessionUser = { username: usernameVal };
+                    localStorage.setItem('hertz_active_session', JSON.stringify(activeSessionUser));
+                    sendDiscordAuditLog("تسجيل دخول ناجح للأدمن", { username: usernameVal });
+                    setTimeout(() => { loadingOverlay.style.display = 'none'; showDashboardInstant(); }, 1000);
+                } else {
+                    loadingOverlay.style.display = 'none';
+                    loginError.innerText = data.message || "اسم المستخدم أو كلمة السر غير صحيحة!";
+                    loginError.style.display = 'block';
+                }
+            } catch (err) {
+                loadingOverlay.style.display = 'none';
+                loginError.innerText = "حدث خطأ أثناء الاتصال بالخادم!";
+                loginError.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

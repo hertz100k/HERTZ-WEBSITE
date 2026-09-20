@@ -31,7 +31,9 @@ const client = new Client({
     partials: [
         Partials.Message,
         Partials.Channel,
-        Partials.Reaction
+        Partials.Reaction,
+        Partials.GuildMember,
+        Partials.User
     ]
 });
 
@@ -120,11 +122,32 @@ client.on('messageCreate', (message) => {
 });
 
 // ============================================================
-// 🛡️ دالة التحقق — الرول فقط
+// 🛡️ دالة التحقق — الرول فقط (باستخدام fetch عشان نضمن الجلب)
 // ============================================================
-async function isAuthorized(member) {
-    if (!member) return false;
-    return member.roles.cache.has(AUTHORIZED_ROLE_ID);
+async function isAuthorized(message, userId) {
+    try {
+        // جلب العضو من السيرفر (fetch بدل cache)
+        const member = await message.guild.members.fetch({ user: userId, force: true });
+
+        if (!member) {
+            console.log(`❌ العضو ${userId} مش موجود في السيرفر`);
+            return false;
+        }
+
+        // فحص الرول
+        const hasRole = member.roles.cache.has(AUTHORIZED_ROLE_ID);
+
+        if (hasRole) {
+            console.log(`✅ العضو ${member.user.tag} عنده الرول`);
+        } else {
+            console.log(`❌ العضو ${member.user.tag} ماعندوش الرول. رولاته: ${member.roles.cache.map(r => r.name).join(', ')}`);
+        }
+
+        return hasRole;
+    } catch (err) {
+        console.error(`❌ خطأ أثناء جلب العضو ${userId}:`, err.message);
+        return false;
+    }
 }
 
 // ============================================================
@@ -153,19 +176,19 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     if (!isTargetChannel) return;
 
-    // 🛡️ التحقق من الرول — لو مش عنده الرول، يتشال الريأكت فورًا
-    let member;
-    try {
-        member = await message.guild.members.fetch(user.id);
-    } catch (err) {
-        member = null;
-    }
+    console.log(`🎯 ريأكت ${emoji} من ${user.tag} في ${message.channel.id}`);
 
-    const authorized = await isAuthorized(member);
+    // 🛡️ التحقق من الرول — لو مش عنده الرول، يتشال الريأكت فورًا
+    const authorized = await isAuthorized(message, user.id);
 
     if (!authorized) {
-        console.log(`⚠️ [محاولة مرفوضة]: ${user.tag} (${user.id}) — لا يمتلك رول "بيانات . الشركة"`);
-        try { await reaction.users.remove(user.id); } catch (err) {}
+        console.log(`⚠️ [محاولة مرفوضة]: ${user.tag} (${user.id}) — لا يمتلك رول "بيانات . الشركة" — يتم إزالة الريأكت`);
+        try {
+            await reaction.users.remove(user.id);
+            console.log(`✅ تم إزالة الريأكت من ${user.tag}`);
+        } catch (err) {
+            console.error(`❌ فشل إزالة الريأكت:`, err.message);
+        }
         return;
     }
 

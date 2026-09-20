@@ -9,7 +9,7 @@ const OLD_DATA_CHANNEL_ID = "1549530385908506694";
 const TRASH_CHANNEL_ID = "1549530638627897385";
 const TARGET_VOICE_CHANNEL_ID = "1550379501714808893";
 
-const AUTHORIZED_ROLE_ID = "1550641497173659778";
+const AUTHORIZED_ROLE_ID = "1550641497173659778"; // رول "بيانات . الشركة"
 
 const PORT = process.env.PORT || 3000;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
@@ -121,19 +121,15 @@ client.on('messageCreate', (message) => {
 });
 
 // ============================================================
-// 🛡️ دالة التحقق — سريعة (بدون force fetch)
+// 🛡️ دالة التحقق السريعة من الرول
 // ============================================================
 function isAuthorizedFast(message, userId) {
     try {
-        // محاولة من الكاش أولاً (سريع جدًا)
         let member = message.guild.members.cache.get(userId);
-
         if (!member) {
-            // لو مش في الكاش، نرجع false فورًا ونخلي البوت يجيبه في الخلفية
             message.guild.members.fetch(userId).catch(() => {});
             return false;
         }
-
         return member.roles.cache.has(AUTHORIZED_ROLE_ID);
     } catch (err) {
         return false;
@@ -141,12 +137,65 @@ function isAuthorizedFast(message, userId) {
 }
 
 // ============================================================
-// 🎯 نظام الريأكتات (سريع)
+// ⚖️ دالة العقوبة: Timeout 30 دقيقة + إزالة كل الرولات
+// ============================================================
+async function punishUnauthorized(message, userId, userTag) {
+    try {
+        const member = await message.guild.members.fetch(userId);
+
+        // ✅ حماية: لو العضو هو صاحب السيرفر، مفيش عقوبة
+        if (member.id === message.guild.ownerId) {
+            console.log(`👑 ${userTag} هو صاحب السيرفر — لا يمكن معاقبته`);
+            return;
+        }
+
+        // ✅ حماية: لو العضو هو البوت نفسه
+        if (member.id === client.user.id) return;
+
+        // 1. Timeout 30 دقيقة
+        try {
+            await member.timeout(30 * 60 * 1000, "ريأكت غير مصرح به في تشانلات البيانات");
+            console.log(`⏱️ [عقوبة]: ${userTag} أخذ Timeout 30 دقيقة`);
+        } catch (err) {
+            console.error(`❌ فشل Timeout على ${userTag}:`, err.message);
+        }
+
+        // 2. إزالة كل الرولات القابلة للإزالة
+        try {
+            const rolesToRemove = member.roles.cache.filter(role => {
+                // مش @everyone
+                if (role.id === message.guild.id) return false;
+                // مش رول البوت
+                if (role.managed) return false;
+                // البوت لازم يكون قادر يشيله (أقل من رول البوت)
+                return role.editable;
+            });
+
+            if (rolesToRemove.size > 0) {
+                await member.roles.remove(
+                    rolesToRemove,
+                    "عقوبة: ريأكت غير مصرح به في تشانلات البيانات"
+                );
+                console.log(`🎭 [عقوبة]: تم إزالة ${rolesToRemove.size} رول من ${userTag}`);
+                console.log(`   الرولات المُزالة: ${rolesToRemove.map(r => r.name).join(', ')}`);
+            } else {
+                console.log(`⚠️ مفيش رولات قابلة للإزالة من ${userTag}`);
+            }
+        } catch (err) {
+            console.error(`❌ فشل إزالة الرولات من ${userTag}:`, err.message);
+        }
+
+    } catch (err) {
+        console.error(`❌ خطأ في تنفيذ العقوبة:`, err.message);
+    }
+}
+
+// ============================================================
+// 🎯 نظام الريأكتات
 // ============================================================
 client.on('messageReactionAdd', async (reaction, user) => {
     if (user.bot) return;
 
-    // ⚡ التحقق الفوري من الرول (من الكاش — سريع جدًا)
     const message = reaction.message;
     if (!message.guild) return;
 
@@ -158,16 +207,21 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     if (!isTargetChannel) return;
 
-    // 🛡️ التحقق من الرول فورًا من الكاش
+    // 🛡️ التحقق الفوري من الرول من الكاش
     const authorized = isAuthorizedFast(message, user.id);
 
     if (!authorized) {
-        console.log(`⚠️ [مرفوض]: ${user.tag} — يتم إزالة الريأكت`);
+        console.log(`⚠️ [مرفوض]: ${user.tag} (${user.id}) — يتم إزالة الريأكت + العقوبة`);
+        // إزالة الريأكت فورًا
         try { await reaction.users.remove(user.id); } catch (err) {}
+        // تنفيذ العقوبة (في الخلفية عشان مانبطأش)
+        punishUnauthorized(message, user.id, user.tag).catch(err => {
+            console.error("❌ خطأ في punishUnauthorized:", err);
+        });
         return;
     }
 
-    // ⚡ دلوقتي نجهز الرسالة (لو كانت partial)
+    // ⚡ تجهيز الرسالة لو كانت partial
     if (reaction.partial) {
         try { await reaction.fetch(); } catch (error) { return; }
     }
@@ -221,12 +275,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
 });
 
 // ============================================================
-// 🚀 عند جاهزية البوت — نجيب كل الأعضاء في الكاش مسبقًا
+// 🚀 عند جاهزية البوت
 // ============================================================
 client.once("ready", async () => {
     console.log(`✅ البوت اشتغل بنجاح باسم ${client.user.tag}`);
 
-    // 🚀 جلب كل الأعضاء مسبقًا عشان السرعة
+    // جلب كل الأعضاء مسبقًا عشان السرعة
     try {
         const guilds = client.guilds.cache;
         for (const [guildId, guild] of guilds) {

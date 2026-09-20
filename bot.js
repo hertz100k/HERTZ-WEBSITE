@@ -4,12 +4,11 @@ const { Client, GatewayIntentBits, Partials } = require("discord.js");
 const { joinVoiceChannel, entersState, VoiceConnectionStatus } = require("@discordjs/voice");
 const express = require("express");
 
-const VISIT_CHANNEL_ID = "1549529917757325322"; // شانل البيانات الجديدة (DATA-NEW)
-const OLD_DATA_CHANNEL_ID = "1549530385908506694"; // شانل البيانات القديمة (DATA-OLD)
-const TRASH_CHANNEL_ID = "1549530638627897385"; // شانل سلة المهملات (RECYCLE-BIN)
-const TARGET_VOICE_CHANNEL_ID = "1550379501714808893"; // أيدي القناة الصوتية المطلوبة
+const VISIT_CHANNEL_ID = "1549529917757325322";
+const OLD_DATA_CHANNEL_ID = "1549530385908506694";
+const TRASH_CHANNEL_ID = "1549530638627897385";
+const TARGET_VOICE_CHANNEL_ID = "1550379501714808893";
 
-// 🛡️ رول "بيانات . الشركة" — الشرط الوحيد للتحكم في البيانات
 const AUTHORIZED_ROLE_ID = "1550641497173659778";
 
 const PORT = process.env.PORT || 3000;
@@ -122,40 +121,53 @@ client.on('messageCreate', (message) => {
 });
 
 // ============================================================
-// 🛡️ دالة التحقق — الرول فقط (باستخدام fetch عشان نضمن الجلب)
+// 🛡️ دالة التحقق — سريعة (بدون force fetch)
 // ============================================================
-async function isAuthorized(message, userId) {
+function isAuthorizedFast(message, userId) {
     try {
-        // جلب العضو من السيرفر (fetch بدل cache)
-        const member = await message.guild.members.fetch({ user: userId, force: true });
+        // محاولة من الكاش أولاً (سريع جدًا)
+        let member = message.guild.members.cache.get(userId);
 
         if (!member) {
-            console.log(`❌ العضو ${userId} مش موجود في السيرفر`);
+            // لو مش في الكاش، نرجع false فورًا ونخلي البوت يجيبه في الخلفية
+            message.guild.members.fetch(userId).catch(() => {});
             return false;
         }
 
-        // فحص الرول
-        const hasRole = member.roles.cache.has(AUTHORIZED_ROLE_ID);
-
-        if (hasRole) {
-            console.log(`✅ العضو ${member.user.tag} عنده الرول`);
-        } else {
-            console.log(`❌ العضو ${member.user.tag} ماعندوش الرول. رولاته: ${member.roles.cache.map(r => r.name).join(', ')}`);
-        }
-
-        return hasRole;
+        return member.roles.cache.has(AUTHORIZED_ROLE_ID);
     } catch (err) {
-        console.error(`❌ خطأ أثناء جلب العضو ${userId}:`, err.message);
         return false;
     }
 }
 
 // ============================================================
-// 🎯 نظام الريأكتات
+// 🎯 نظام الريأكتات (سريع)
 // ============================================================
 client.on('messageReactionAdd', async (reaction, user) => {
     if (user.bot) return;
 
+    // ⚡ التحقق الفوري من الرول (من الكاش — سريع جدًا)
+    const message = reaction.message;
+    if (!message.guild) return;
+
+    // ⚠️ فلتر سريع: هل الرسالة في أحد التشانلات الثلاثة؟
+    const isTargetChannel =
+        message.channelId === VISIT_CHANNEL_ID ||
+        message.channelId === OLD_DATA_CHANNEL_ID ||
+        message.channelId === TRASH_CHANNEL_ID;
+
+    if (!isTargetChannel) return;
+
+    // 🛡️ التحقق من الرول فورًا من الكاش
+    const authorized = isAuthorizedFast(message, user.id);
+
+    if (!authorized) {
+        console.log(`⚠️ [مرفوض]: ${user.tag} — يتم إزالة الريأكت`);
+        try { await reaction.users.remove(user.id); } catch (err) {}
+        return;
+    }
+
+    // ⚡ دلوقتي نجهز الرسالة (لو كانت partial)
     if (reaction.partial) {
         try { await reaction.fetch(); } catch (error) { return; }
     }
@@ -163,38 +175,13 @@ client.on('messageReactionAdd', async (reaction, user) => {
         try { await reaction.message.fetch(); } catch (error) { return; }
     }
 
-    const message = reaction.message;
     const emoji = reaction.emoji.name;
     const msgContent = message.content || "";
     const msgEmbeds = message.embeds;
 
-    // ⚠️ التحقق: هل الرسالة في أحد التشانلات الثلاثة؟
-    const isTargetChannel =
-        message.channel.id === VISIT_CHANNEL_ID ||
-        message.channel.id === OLD_DATA_CHANNEL_ID ||
-        message.channel.id === TRASH_CHANNEL_ID;
-
-    if (!isTargetChannel) return;
-
-    console.log(`🎯 ريأكت ${emoji} من ${user.tag} في ${message.channel.id}`);
-
-    // 🛡️ التحقق من الرول — لو مش عنده الرول، يتشال الريأكت فورًا
-    const authorized = await isAuthorized(message, user.id);
-
-    if (!authorized) {
-        console.log(`⚠️ [محاولة مرفوضة]: ${user.tag} (${user.id}) — لا يمتلك رول "بيانات . الشركة" — يتم إزالة الريأكت`);
-        try {
-            await reaction.users.remove(user.id);
-            console.log(`✅ تم إزالة الريأكت من ${user.tag}`);
-        } catch (err) {
-            console.error(`❌ فشل إزالة الريأكت:`, err.message);
-        }
-        return;
-    }
-
     // ✅ في البيانات الجديدة → البيانات القديمة
     if (emoji === '✅') {
-        if (message.channel.id === VISIT_CHANNEL_ID) {
+        if (message.channelId === VISIT_CHANNEL_ID) {
             try { await message.delete(); } catch (error) { return; }
             const oldChannel = await client.channels.fetch(OLD_DATA_CHANNEL_ID).catch(() => null);
             if (oldChannel) {
@@ -202,13 +189,11 @@ client.on('messageReactionAdd', async (reaction, user) => {
             }
             console.log("✅ [DATA-NEW] → [DATA-OLD]");
         }
-        // ✅ في البيانات القديمة → يتشال (مفيش تكرار)
-        else if (message.channel.id === OLD_DATA_CHANNEL_ID) {
+        else if (message.channelId === OLD_DATA_CHANNEL_ID) {
             try { await reaction.users.remove(user.id); } catch (error) {}
             return;
         }
-        // ✅ في سلة المهملات → يرجع للبيانات القديمة
-        else if (message.channel.id === TRASH_CHANNEL_ID) {
+        else if (message.channelId === TRASH_CHANNEL_ID) {
             try { await message.delete(); } catch (error) { return; }
             const oldChannel = await client.channels.fetch(OLD_DATA_CHANNEL_ID).catch(() => null);
             if (oldChannel) {
@@ -219,8 +204,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
     }
     // ❌ في أي مكان
     else if (emoji === '❌') {
-        // ❌ في البيانات الجديدة أو القديمة → سلة المهملات
-        if (message.channel.id === VISIT_CHANNEL_ID || message.channel.id === OLD_DATA_CHANNEL_ID) {
+        if (message.channelId === VISIT_CHANNEL_ID || message.channelId === OLD_DATA_CHANNEL_ID) {
             try { await message.delete(); } catch (error) { return; }
             const trashChannel = await client.channels.fetch(TRASH_CHANNEL_ID).catch(() => null);
             if (trashChannel) {
@@ -228,8 +212,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
             }
             console.log("❌ → [TRASH]");
         }
-        // ❌ في سلة المهملات → يتشال تلقائي
-        else if (message.channel.id === TRASH_CHANNEL_ID) {
+        else if (message.channelId === TRASH_CHANNEL_ID) {
             try { await reaction.users.remove(user.id); } catch (err) {}
             console.log("❌ [TRASH] → تم إزالة الريأكت");
             return;
@@ -237,12 +220,24 @@ client.on('messageReactionAdd', async (reaction, user) => {
     }
 });
 
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🌐 Webhook server running on port ${PORT}`);
-});
-
-client.once("ready", () => {
+// ============================================================
+// 🚀 عند جاهزية البوت — نجيب كل الأعضاء في الكاش مسبقًا
+// ============================================================
+client.once("ready", async () => {
     console.log(`✅ البوت اشتغل بنجاح باسم ${client.user.tag}`);
+
+    // 🚀 جلب كل الأعضاء مسبقًا عشان السرعة
+    try {
+        const guilds = client.guilds.cache;
+        for (const [guildId, guild] of guilds) {
+            console.log(`🔄 جلب أعضاء السيرفر: ${guild.name}`);
+            await guild.members.fetch();
+            console.log(`✅ تم جلب ${guild.memberCount} عضو`);
+        }
+    } catch (err) {
+        console.error("❌ خطأ أثناء جلب الأعضاء:", err);
+    }
+
     connectToVoiceChannel();
 
     setInterval(async () => {

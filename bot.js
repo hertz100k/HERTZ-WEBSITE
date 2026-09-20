@@ -9,11 +9,8 @@ const OLD_DATA_CHANNEL_ID = "1549530385908506694"; // شانل البيانات 
 const TRASH_CHANNEL_ID = "1549530638627897385"; // شانل سلة المهملات (RECYCLE-BIN)
 const TARGET_VOICE_CHANNEL_ID = "1550379501714808893"; // أيدي القناة الصوتية المطلوبة
 
-// 🛡️ رول "بيانات . الشركة" — أي حد عنده الرول ده يقدر يستخدم الأوامر الحساسة
+// 🛡️ رول "بيانات . الشركة" — الشرط الوحيد للتحكم في البيانات
 const AUTHORIZED_ROLE_ID = "1550641497173659778";
-
-// احتياطي: المالك الأساسي
-const OWNER_ID = process.env.OWNER_ID || "1351941644714250422";
 
 const PORT = process.env.PORT || 3000;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
@@ -29,7 +26,7 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.GuildMembers // ضروري للتحقق من الرولات
+        GatewayIntentBits.GuildMembers
     ],
     partials: [
         Partials.Message,
@@ -67,9 +64,6 @@ app.post("/visit", async (req, res) => {
     }
 });
 
-// ============================================================
-// 🔊 دالة دخول الفويس
-// ============================================================
 async function connectToVoiceChannel() {
     try {
         const channel = await client.channels.fetch(TARGET_VOICE_CHANNEL_ID);
@@ -126,15 +120,11 @@ client.on('messageCreate', (message) => {
 });
 
 // ============================================================
-// 🛡️ دالة التحقق من الرول
+// 🛡️ دالة التحقق — الرول فقط، مفيش استثناءات
 // ============================================================
 async function isAuthorized(member) {
     if (!member) return false;
-    // لو عنده الرول المصرح
-    if (member.roles.cache.has(AUTHORIZED_ROLE_ID)) return true;
-    // أو لو هو المالك
-    if (member.id === OWNER_ID) return true;
-    return false;
+    return member.roles.cache.has(AUTHORIZED_ROLE_ID);
 }
 
 // ============================================================

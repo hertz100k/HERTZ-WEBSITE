@@ -32,7 +32,7 @@ const supabase = createClient(
 );
 
 // ============================================================
-// 🎯 AI Validator (مدمج)
+// 🎯 AI Validator
 // ============================================================
 
 // الأسماء المصرية الشائعة
@@ -60,7 +60,6 @@ const EGYPTIAN_NAMES = {
     ]
 };
 
-// المحافظات المصرية
 const EGYPT_GOVERNORATES = [
     'القاهرة', 'الجيزة', 'الإسكندرية', 'الدقهلية', 'الشرقية', 'المنوفية', 'القليوبية',
     'البحيرة', 'الغربية', 'بورسعيد', 'دمياط', 'الإسماعيلية', 'السويس', 'كفر الشيخ',
@@ -69,13 +68,11 @@ const EGYPT_GOVERNORATES = [
     'القاهرة الجديدة', '6 أكتوبر', 'الشيخ زايد', 'مدينة نصر', 'المعادي', 'حلوان'
 ];
 
-// نطاقات الإيميل الموثوقة
 const TRUSTED_EMAIL_DOMAINS = [
     'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'live.com',
     'icloud.com', 'protonmail.com', 'mail.ru', 'yandex.com'
 ];
 
-// الكلمات المحظورة
 const FORBIDDEN_WORDS = [
     'asd', 'asdf', 'qwe', 'qwerty', 'test', 'testing', 'admin', 'root',
     'hgf', 'jkl', 'zxc', 'vbn', 'mnb', 'lkj', 'poiu', 'oiuy',
@@ -83,9 +80,6 @@ const FORBIDDEN_WORDS = [
     'hacker', 'hack', 'fake', 'scam', 'spam', 'null', 'undefined'
 ];
 
-// ============================================================
-// 🎯 AI Validator
-// ============================================================
 function aiValidateUser(userData) {
     let score = 100;
     let reasons = [];
@@ -113,14 +107,12 @@ function aiValidateUser(userData) {
                 continue;
             }
 
-            // فحص الحروف (عربي أو إنجليزي فقط)
             if (!/^[\u0600-\u06FFa-zA-Z]+$/.test(part)) {
                 score -= 20;
                 reasons.push(`الاسم "${part}" يحتوي على رموز أو أرقام`);
                 continue;
             }
 
-            // فحص الكلمات المحظورة
             const lowerPart = part.toLowerCase();
             if (FORBIDDEN_WORDS.some(w => lowerPart.includes(w))) {
                 score -= 40;
@@ -128,7 +120,6 @@ function aiValidateUser(userData) {
                 continue;
             }
 
-            // فحص إن الاسم في قاعدة الأسامي المصرية
             const allNames = [...EGYPTIAN_NAMES.male, ...EGYPTIAN_NAMES.female];
             if (allNames.some(n => n.includes(part) || part.includes(n))) {
                 knownNames++;
@@ -192,7 +183,6 @@ function aiValidateUser(userData) {
         }
     }
 
-    // القرار النهائي
     const verdict = score >= 60 ? 'approved' : 'suspicious';
     const finalScore = Math.max(0, score);
 
@@ -256,11 +246,9 @@ app.post("/register", async (req, res) => {
 
         console.log(`📥 تسجيل جديد: ${username} | ${phone}`);
 
-        // 🎯 تشغيل AI Validator
         const validation = aiValidateUser({ username, email, phone, address });
         console.log(`🤖 AI Score: ${validation.score} | Verdict: ${validation.verdict}`);
 
-        // 🎯 حفظ في pending_users
         const { data: pendingData, error: pendingError } = await supabase
             .from('pending_users')
             .insert([{
@@ -287,7 +275,6 @@ app.post("/register", async (req, res) => {
             return res.status(500).json({ error: "Database error" });
         }
 
-        // 🎯 إرسال رسالة في Discord
         const channel = await client.channels.fetch(VISIT_CHANNEL_ID).catch(() => null);
         if (!channel) {
             console.error("❌ Channel not found");
@@ -308,13 +295,11 @@ app.post("/register", async (req, res) => {
         const sentMessage = await channel.send({ content: messageContent });
         console.log(`✅ تم إرسال الرسالة: ${sentMessage.id}`);
 
-        // 🎯 ربط الرسالة بـ pending_user
         await supabase
             .from('pending_users')
             .update({ discord_message_id: sentMessage.id })
             .eq('id', pendingData.id);
 
-        // 🎯 جدولة AI Validation بعد 5 دقايق
         scheduleAiCheck(pendingData.id, sentMessage.id, 5 * 60 * 1000);
 
         res.status(200).json({
@@ -326,6 +311,71 @@ app.post("/register", async (req, res) => {
 
     } catch (error) {
         console.error("❌ Register error:", error);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// ============================================================
+// 🔐 API: تسجيل الدخول (log فقط)
+// ============================================================
+app.post("/login", async (req, res) => {
+    try {
+        const receivedSecret = req.headers["x-hertz-secret"];
+        if (receivedSecret !== WEBHOOK_SECRET) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+        console.log(`🔐 تسجيل دخول: ${req.body.username} | ${req.body.phone}`);
+        res.status(200).json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// ============================================================
+// 📦 API: أوردر جديد (log فقط)
+// ============================================================
+app.post("/order", async (req, res) => {
+    try {
+        const receivedSecret = req.headers["x-hertz-secret"];
+        if (receivedSecret !== WEBHOOK_SECRET) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+        console.log(`📦 أوردر جديد: ${req.body.username} | ${req.body.customerPhone}`);
+        res.status(200).json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// ============================================================
+// 📩 API: طلب فك حظر
+// ============================================================
+app.post("/unban-request", async (req, res) => {
+    try {
+        const receivedSecret = req.headers["x-hertz-secret"];
+        if (receivedSecret !== WEBHOOK_SECRET) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        const { username, phone, user_code, email, reason } = req.body;
+        console.log(`📩 طلب فك حظر: ${username} | ${phone}`);
+
+        const channel = await client.channels.fetch(VISIT_CHANNEL_ID).catch(() => null);
+        if (channel) {
+            await channel.send({
+                content: `📩 **طلب فك حظر جديد**\n\n` +
+                         `👤 **الاسم:**\n\`\`\`${username}\`\`\`\n` +
+                         `📱 **الموبايل:**\n\`\`\`+20 ${phone}\`\`\`\n` +
+                         `🔑 **الكود:**\n\`${user_code}\`\n\n` +
+                         `📧 **الإيميل:**\n\`\`\`${email || 'غير متوفر'}\`\`\`\n\n` +
+                         `💬 **السبب:**\n\`\`\`${reason || 'طلب فك الحظر'}\`\`\``
+            });
+        }
+
+        res.status(200).json({ success: true, message: "تم إرسال طلبك للإدارة" });
+
+    } catch (error) {
+        console.error("❌ Unban request error:", error);
         res.status(500).json({ error: "Server error" });
     }
 });
@@ -458,6 +508,29 @@ app.get("/users", async (req, res) => {
 });
 
 // ============================================================
+// 📊 API: المستخدمين المعلقين
+// ============================================================
+app.get("/pending", async (req, res) => {
+    try {
+        const receivedSecret = req.headers["x-hertz-secret"];
+        if (receivedSecret !== WEBHOOK_SECRET) {
+            return res.status(401).json({ error: "Unauthorized" });
+        }
+
+        const { data, error } = await supabase
+            .from('pending_users')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) return res.status(500).json({ error: "Database error" });
+        res.status(200).json({ pending: data });
+
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// ============================================================
 // 📊 API: كل المحظورين
 // ============================================================
 app.get("/bans", async (req, res) => {
@@ -491,7 +564,6 @@ function scheduleAiCheck(pendingUserId, messageId, delayMs) {
         try {
             console.log(`🤖 بدء AI Check لـ ${pendingUserId}`);
 
-            // 1. نجيب بيانات المستخدم من pending_users
             const { data: user, error } = await supabase
                 .from('pending_users')
                 .select('*')
@@ -503,13 +575,11 @@ function scheduleAiCheck(pendingUserId, messageId, delayMs) {
                 return;
             }
 
-            // 2. لو الإدارة ردت، مانعملش حاجة
             if (user.status !== 'waiting') {
                 console.log(`✅ الإدارة ردت بالفعل — status: ${user.status}`);
                 return;
             }
 
-            // 3. تشغيل AI Validator
             const validation = aiValidateUser({
                 username: user.username,
                 email: user.email,
@@ -519,7 +589,6 @@ function scheduleAiCheck(pendingUserId, messageId, delayMs) {
 
             console.log(`🤖 AI Verdict: ${validation.verdict} | Score: ${validation.score}`);
 
-            // 4. تحديث pending_users
             await supabase
                 .from('pending_users')
                 .update({
@@ -532,7 +601,6 @@ function scheduleAiCheck(pendingUserId, messageId, delayMs) {
                 })
                 .eq('id', pendingUserId);
 
-            // 5. نقل إلى users
             const { error: insertError } = await supabase
                 .from('users')
                 .insert([{
@@ -551,7 +619,6 @@ function scheduleAiCheck(pendingUserId, messageId, delayMs) {
 
             if (insertError) console.error("❌ Insert users error:", insertError);
 
-            // 6. تعديل الرسالة في Discord
             try {
                 const channel = await client.channels.fetch(VISIT_CHANNEL_ID);
                 const message = await channel.messages.fetch(messageId);
@@ -575,7 +642,7 @@ function scheduleAiCheck(pendingUserId, messageId, delayMs) {
 }
 
 // ============================================================
-// 🎯 نظام الريأكتات (مع Supabase)
+// 🎯 نظام الريأكتات
 // ============================================================
 function isAuthorizedFast(message, userId) {
     try {
@@ -603,7 +670,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     if (!isTargetChannel) return;
 
-    // 🛡️ التحقق من الرول
     const authorized = isAuthorizedFast(message, user.id);
 
     if (!authorized) {
@@ -623,10 +689,8 @@ client.on('messageReactionAdd', async (reaction, user) => {
     const msgContent = message.content || "";
     const msgEmbeds = message.embeds;
 
-    // ✅ الموافقة
     if (emoji === '✅') {
         if (message.channelId === VISIT_CHANNEL_ID) {
-            // لو دي رسالة مستخدم (من pending_users)
             await handleApproval(message, user);
 
             try { await message.delete(); } catch (error) { return; }
@@ -649,10 +713,8 @@ client.on('messageReactionAdd', async (reaction, user) => {
             console.log("✅ [TRASH] → [DATA-OLD]");
         }
     }
-    // ❌ الرفض
     else if (emoji === '❌') {
         if (message.channelId === VISIT_CHANNEL_ID || message.channelId === OLD_DATA_CHANNEL_ID) {
-            // لو دي رسالة مستخدم (من pending_users)
             if (message.channelId === VISIT_CHANNEL_ID) {
                 await handleRejection(message, user);
             }
@@ -672,9 +734,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
     }
 });
 
-// ============================================================
-// ✅ الموافقة على مستخدم
-// ============================================================
 async function handleApproval(message, adminUser) {
     try {
         const { data: pending, error } = await supabase
@@ -688,7 +747,6 @@ async function handleApproval(message, adminUser) {
             return;
         }
 
-        // تحديث pending_users
         await supabase
             .from('pending_users')
             .update({
@@ -697,7 +755,6 @@ async function handleApproval(message, adminUser) {
             })
             .eq('id', pending.id);
 
-        // نقل إلى users
         await supabase
             .from('users')
             .insert([{
@@ -718,9 +775,6 @@ async function handleApproval(message, adminUser) {
     }
 }
 
-// ============================================================
-// ❌ رفض مستخدم (حظر)
-// ============================================================
 async function handleRejection(message, adminUser) {
     try {
         const { data: pending, error } = await supabase
@@ -734,7 +788,6 @@ async function handleRejection(message, adminUser) {
             return;
         }
 
-        // تحديث pending_users
         await supabase
             .from('pending_users')
             .update({
@@ -743,7 +796,6 @@ async function handleRejection(message, adminUser) {
             })
             .eq('id', pending.id);
 
-        // إضافة إلى bans
         await supabase
             .from('bans')
             .insert([{
@@ -762,9 +814,6 @@ async function handleRejection(message, adminUser) {
     }
 }
 
-// ============================================================
-// 🔊 دخول الفويس
-// ============================================================
 async function connectToVoiceChannel() {
     try {
         const channel = await client.channels.fetch(TARGET_VOICE_CHANNEL_ID);
@@ -808,49 +857,10 @@ async function connectToVoiceChannel() {
     }
 }
 
-// ============================================================
-// 🚀 عند جاهزية البوت
-// ============================================================
 client.once("ready", async () => {
     console.log(`✅ البوت اشتغل بنجاح: ${client.user.tag}`);
     console.log(`🌐 Webhook server running on port ${PORT}`);
 
     try {
         for (const [guildId, guild] of client.guilds.cache) {
-            console.log(`🔄 جلب أعضاء: ${guild.name}`);
-            await guild.members.fetch();
-            console.log(`✅ تم جلب ${guild.memberCount} عضو`);
-        }
-    } catch (err) {
-        console.error("❌ خطأ في جلب الأعضاء:", err);
-    }
-
-    connectToVoiceChannel();
-
-    setInterval(async () => {
-        try {
-            if (!currentConnection || currentConnection.state.status === VoiceConnectionStatus.Disconnected || currentConnection.state.status === VoiceConnectionStatus.Destroyed) {
-                console.log("⚠️ إعادة إدخال البوت للفويس...");
-                connectToVoiceChannel();
-            }
-        } catch (e) {
-            connectToVoiceChannel();
-        }
-    }, 10 * 1000);
-});
-
-process.on('unhandledRejection', (error) => {
-    console.error('⚠️ Unhandled Rejection:', error);
-});
-process.on('uncaughtException', (error) => {
-    console.error('⚠️ Uncaught Exception:', error);
-});
-
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🌐 Webhook server running on port ${PORT}`);
-});
-
-client.login(process.env.DISCORD_TOKEN)
-    .catch((error) => {
-        console.error("❌ فشل تسجيل الدخول:", error);
-    });
+            console.log(`🔄 جلب أع

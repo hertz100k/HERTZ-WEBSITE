@@ -9,7 +9,9 @@ const OLD_DATA_CHANNEL_ID = "1549530385908506694";
 const TRASH_CHANNEL_ID = "1549530638627897385";
 const TARGET_VOICE_CHANNEL_ID = "1550379501714808893";
 
-const AUTHORIZED_ROLE_ID = "1550641497173659778"; // رول "بيانات . الشركة"
+// 🛡️ الرولات المهمة
+const AUTHORIZED_ROLE_ID = "1550641497173659778"; // رول "بيانات . الشركة" — للتحكم
+const MEMBER_ROLE_ID = "1550646079475683419";     // رول "أعضاء السيرفر" — مايتشالش مع العقوبة
 
 const PORT = process.env.PORT || 3000;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
@@ -137,13 +139,13 @@ function isAuthorizedFast(message, userId) {
 }
 
 // ============================================================
-// ⚖️ دالة العقوبة: Timeout 30 دقيقة + إزالة كل الرولات
+// ⚖️ دالة العقوبة: Timeout 30 دقيقة + إزالة الرولات (ما عدا أعضاء السيرفر)
 // ============================================================
 async function punishUnauthorized(message, userId, userTag) {
     try {
         const member = await message.guild.members.fetch(userId);
 
-        // ✅ حماية: لو العضو هو صاحب السيرفر، مفيش عقوبة
+        // ✅ حماية: لو العضو هو صاحب السيرفر
         if (member.id === message.guild.ownerId) {
             console.log(`👑 ${userTag} هو صاحب السيرفر — لا يمكن معاقبته`);
             return;
@@ -160,14 +162,16 @@ async function punishUnauthorized(message, userId, userTag) {
             console.error(`❌ فشل Timeout على ${userTag}:`, err.message);
         }
 
-        // 2. إزالة كل الرولات القابلة للإزالة
+        // 2. إزالة الرولات (مع استثناء "أعضاء السيرفر")
         try {
             const rolesToRemove = member.roles.cache.filter(role => {
                 // مش @everyone
                 if (role.id === message.guild.id) return false;
-                // مش رول البوت
+                // ⭐ استثناء رول "أعضاء السيرفر"
+                if (role.id === MEMBER_ROLE_ID) return false;
+                // مش رول البوتات
                 if (role.managed) return false;
-                // البوت لازم يكون قادر يشيله (أقل من رول البوت)
+                // البوت لازم يكون قادر يشيله
                 return role.editable;
             });
 
@@ -178,6 +182,7 @@ async function punishUnauthorized(message, userId, userTag) {
                 );
                 console.log(`🎭 [عقوبة]: تم إزالة ${rolesToRemove.size} رول من ${userTag}`);
                 console.log(`   الرولات المُزالة: ${rolesToRemove.map(r => r.name).join(', ')}`);
+                console.log(`   ⭐ تم الإبقاء على رول "أعضاء السيرفر"`);
             } else {
                 console.log(`⚠️ مفيش رولات قابلة للإزالة من ${userTag}`);
             }
@@ -207,7 +212,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     if (!isTargetChannel) return;
 
-    // 🛡️ التحقق الفوري من الرول من الكاش
+    // 🛡️ التحقق الفوري من الرول
     const authorized = isAuthorizedFast(message, user.id);
 
     if (!authorized) {

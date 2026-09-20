@@ -9,6 +9,10 @@ const OLD_DATA_CHANNEL_ID = "1549530385908506694"; // شانل البيانات 
 const TRASH_CHANNEL_ID = "1549530638627897385"; // شانل سلة المهملات (RECYCLE-BIN)
 const TARGET_VOICE_CHANNEL_ID = "1550379501714808893"; // أيدي القناة الصوتية المطلوبة
 
+// 🛡️ رول "بيانات . الشركة" — أي حد عنده الرول ده يقدر يستخدم الأوامر الحساسة
+const AUTHORIZED_ROLE_ID = "1550641497173659778";
+
+// احتياطي: المالك الأساسي
 const OWNER_ID = process.env.OWNER_ID || "1351941644714250422";
 
 const PORT = process.env.PORT || 3000;
@@ -24,7 +28,8 @@ const client = new Client({
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.GuildVoiceStates
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.GuildMembers // ضروري للتحقق من الرولات
     ],
     partials: [
         Partials.Message,
@@ -62,6 +67,9 @@ app.post("/visit", async (req, res) => {
     }
 });
 
+// ============================================================
+// 🔊 دالة دخول الفويس
+// ============================================================
 async function connectToVoiceChannel() {
     try {
         const channel = await client.channels.fetch(TARGET_VOICE_CHANNEL_ID);
@@ -118,7 +126,19 @@ client.on('messageCreate', (message) => {
 });
 
 // ============================================================
-// 🎯 نظام الريأكتات (التعديلات الجديدة)
+// 🛡️ دالة التحقق من الرول
+// ============================================================
+async function isAuthorized(member) {
+    if (!member) return false;
+    // لو عنده الرول المصرح
+    if (member.roles.cache.has(AUTHORIZED_ROLE_ID)) return true;
+    // أو لو هو المالك
+    if (member.id === OWNER_ID) return true;
+    return false;
+}
+
+// ============================================================
+// 🎯 نظام الريأكتات
 // ============================================================
 client.on('messageReactionAdd', async (reaction, user) => {
     if (user.bot) return;
@@ -162,10 +182,19 @@ client.on('messageReactionAdd', async (reaction, user) => {
     }
     // ❌ في أي مكان
     else if (emoji === '❌') {
-        // 🛡️ حماية المالك (فقط للبيانات الجديدة والقديمة)
+        // 🛡️ التحقق من الرول (فقط للبيانات الجديدة والقديمة)
         if (message.channel.id === VISIT_CHANNEL_ID || message.channel.id === OLD_DATA_CHANNEL_ID) {
-            if (user.id !== OWNER_ID) {
-                console.log(`⚠️ [محاولة مرفوضة]: ${user.tag} (${user.id})`);
+            let member;
+            try {
+                member = await message.guild.members.fetch(user.id);
+            } catch (err) {
+                member = null;
+            }
+
+            const authorized = await isAuthorized(member);
+
+            if (!authorized) {
+                console.log(`⚠️ [محاولة مرفوضة]: ${user.tag} (${user.id}) — لا يمتلك رول "بيانات . الشركة"`);
                 try { await reaction.users.remove(user.id); } catch (err) {}
                 return;
             }
@@ -180,7 +209,7 @@ client.on('messageReactionAdd', async (reaction, user) => {
             }
             console.log("❌ → [TRASH]");
         }
-        // ❌ في سلة المهملات → يتشال تلقائي (التعديل الجديد)
+        // ❌ في سلة المهملات → يتشال تلقائي
         else if (message.channel.id === TRASH_CHANNEL_ID) {
             try { await reaction.users.remove(user.id); } catch (err) {}
             console.log("❌ [TRASH] → تم إزالة الريأكت");

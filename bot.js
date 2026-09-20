@@ -90,7 +90,7 @@ function aiValidateUser(userData) {
             if (part.length < 3) { score -= 15; continue; }
             if (!/^[\u0600-\u06FFa-zA-Z]+$/.test(part)) {
                 score -= 20;
-                reasons.push(`الاسم "${part}" يحتوي على رموز`);
+                reasons.push(`الاسم "${part}" فيه رموز`);
                 continue;
             }
             const lowerPart = part.toLowerCase();
@@ -187,17 +187,16 @@ app.get("/", (req, res) => {
     res.send(`HERTZ ADMIN BOT is running. | Voice: ${uptimeHours}h / ${TARGET_HOURS}h`);
 });
 
+// ============================================================
 // API: register
+// ============================================================
 app.post("/register", async (req, res) => {
     try {
         const receivedSecret = req.headers["x-hertz-secret"];
-        if (receivedSecret !== WEBHOOK_SECRET) {
-            return res.status(401).json({ error: "Unauthorized" });
-        }
+        if (receivedSecret !== WEBHOOK_SECRET) return res.status(401).json({ error: "Unauthorized" });
         const { username, email, phone, address, user_code, sequence_number, ip, password } = req.body;
-        if (!username || !phone) {
-            return res.status(400).json({ error: "Missing fields" });
-        }
+        if (!username || !phone) return res.status(400).json({ error: "Missing fields" });
+
         console.log(`📥 تسجيل: ${username} | ${phone}`);
         const validation = aiValidateUser({ username, email, phone, address });
         console.log(`🤖 AI: ${validation.score} | ${validation.verdict}`);
@@ -251,7 +250,9 @@ app.post("/register", async (req, res) => {
     }
 });
 
+// ============================================================
 // API: login
+// ============================================================
 app.post("/login", async (req, res) => {
     try {
         const receivedSecret = req.headers["x-hertz-secret"];
@@ -263,7 +264,9 @@ app.post("/login", async (req, res) => {
     }
 });
 
+// ============================================================
 // API: order
+// ============================================================
 app.post("/order", async (req, res) => {
     try {
         const receivedSecret = req.headers["x-hertz-secret"];
@@ -275,7 +278,9 @@ app.post("/order", async (req, res) => {
     }
 });
 
+// ============================================================
 // API: unban-request
+// ============================================================
 app.post("/unban-request", async (req, res) => {
     try {
         const receivedSecret = req.headers["x-hertz-secret"];
@@ -301,7 +306,9 @@ app.post("/unban-request", async (req, res) => {
     }
 });
 
+// ============================================================
 // API: check-ban
+// ============================================================
 app.get("/check-ban", async (req, res) => {
     try {
         const { phone, user_code } = req.query;
@@ -320,7 +327,9 @@ app.get("/check-ban", async (req, res) => {
     }
 });
 
+// ============================================================
 // API: ban
+// ============================================================
 app.post("/ban", async (req, res) => {
     try {
         const receivedSecret = req.headers["x-hertz-secret"];
@@ -344,7 +353,9 @@ app.post("/ban", async (req, res) => {
     }
 });
 
+// ============================================================
 // API: unban
+// ============================================================
 app.post("/unban", async (req, res) => {
     try {
         const receivedSecret = req.headers["x-hertz-secret"];
@@ -362,7 +373,9 @@ app.post("/unban", async (req, res) => {
     }
 });
 
+// ============================================================
 // API: users
+// ============================================================
 app.get("/users", async (req, res) => {
     try {
         const receivedSecret = req.headers["x-hertz-secret"];
@@ -378,7 +391,9 @@ app.get("/users", async (req, res) => {
     }
 });
 
+// ============================================================
 // API: pending
+// ============================================================
 app.get("/pending", async (req, res) => {
     try {
         const receivedSecret = req.headers["x-hertz-secret"];
@@ -394,7 +409,9 @@ app.get("/pending", async (req, res) => {
     }
 });
 
+// ============================================================
 // API: bans
+// ============================================================
 app.get("/bans", async (req, res) => {
     try {
         const receivedSecret = req.headers["x-hertz-secret"];
@@ -406,6 +423,216 @@ app.get("/bans", async (req, res) => {
             .order('banned_at', { ascending: false });
         if (error) return res.status(500).json({ error: "DB error" });
         res.status(200).json({ bans: data });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// ============================================================
+// 🆕 API: PRODUCTS (المنتجات)
+// ============================================================
+
+// جلب كل المنتجات
+app.get("/products", async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('products')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) return res.status(500).json({ error: "DB error" });
+        res.status(200).json({ products: data });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// إضافة منتج جديد
+app.post("/products", async (req, res) => {
+    try {
+        const receivedSecret = req.headers["x-hertz-secret"];
+        if (receivedSecret !== WEBHOOK_SECRET) return res.status(401).json({ error: "Unauthorized" });
+
+        const { title, description, price, discount, images, category } = req.body;
+        if (!title || !category) return res.status(400).json({ error: "Missing fields" });
+
+        const { data, error } = await supabase
+            .from('products')
+            .insert([{ title, description, price, discount, images: images || [], category }])
+            .select()
+            .single();
+
+        if (error) {
+            console.error("❌ Product insert:", error);
+            return res.status(500).json({ error: "DB error" });
+        }
+        console.log(`📦 منتج جديد: ${title}`);
+        res.status(200).json({ success: true, product: data });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// حذف منتج
+app.delete("/products/:id", async (req, res) => {
+    try {
+        const receivedSecret = req.headers["x-hertz-secret"];
+        if (receivedSecret !== WEBHOOK_SECRET) return res.status(401).json({ error: "Unauthorized" });
+
+        const { error } = await supabase
+            .from('products')
+            .delete()
+            .eq('id', req.params.id);
+
+        if (error) return res.status(500).json({ error: "DB error" });
+        console.log(`🗑️ حذف منتج: ${req.params.id}`);
+        res.status(200).json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// ============================================================
+// 🆕 API: SECTIONS (الأقسام المخصصة)
+// ============================================================
+
+// جلب الأقسام
+app.get("/sections", async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('custom_sections')
+            .select('*')
+            .order('position', { ascending: true });
+        if (error) return res.status(500).json({ error: "DB error" });
+        res.status(200).json({ sections: data });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// إضافة قسم
+app.post("/sections", async (req, res) => {
+    try {
+        const receivedSecret = req.headers["x-hertz-secret"];
+        if (receivedSecret !== WEBHOOK_SECRET) return res.status(401).json({ error: "Unauthorized" });
+
+        const { title, image_url, position } = req.body;
+        if (!title) return res.status(400).json({ error: "Missing title" });
+
+        const { data, error } = await supabase
+            .from('custom_sections')
+            .insert([{ title, image_url, position: position || 0 }])
+            .select()
+            .single();
+
+        if (error) return res.status(500).json({ error: "DB error" });
+        console.log(`📁 قسم جديد: ${title}`);
+        res.status(200).json({ success: true, section: data });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// حذف قسم
+app.delete("/sections/:id", async (req, res) => {
+    try {
+        const receivedSecret = req.headers["x-hertz-secret"];
+        if (receivedSecret !== WEBHOOK_SECRET) return res.status(401).json({ error: "Unauthorized" });
+
+        const { error } = await supabase
+            .from('custom_sections')
+            .delete()
+            .eq('id', req.params.id);
+
+        if (error) return res.status(500).json({ error: "DB error" });
+        console.log(`🗑️ حذف قسم: ${req.params.id}`);
+        res.status(200).json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// ============================================================
+// 🆕 API: LAYOUT (تخطيط المتجر)
+// ============================================================
+
+// جلب التخطيط
+app.get("/layout", async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('store_layout')
+            .select('*');
+        if (error) return res.status(500).json({ error: "DB error" });
+        res.status(200).json({ layout: data });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// حفظ التخطيط
+app.post("/layout", async (req, res) => {
+    try {
+        const receivedSecret = req.headers["x-hertz-secret"];
+        if (receivedSecret !== WEBHOOK_SECRET) return res.status(401).json({ error: "Unauthorized" });
+
+        const { element_id, transform_data, extra_data } = req.body;
+        if (!element_id) return res.status(400).json({ error: "Missing element_id" });
+
+        const { data, error } = await supabase
+            .from('store_layout')
+            .upsert([{
+                element_id,
+                transform_data,
+                extra_data,
+                updated_at: new Date().toISOString()
+            }], { onConflict: 'element_id' })
+            .select()
+            .single();
+
+        if (error) return res.status(500).json({ error: "DB error" });
+        res.status(200).json({ success: true, layout: data });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// ============================================================
+// 🆕 API: SUB-PAGE TITLES (عناوين الصفحات الفرعية)
+// ============================================================
+
+// جلب العناوين
+app.get("/sub-titles", async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('sub_page_titles')
+            .select('*');
+        if (error) return res.status(500).json({ error: "DB error" });
+        res.status(200).json({ titles: data });
+    } catch (error) {
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// حفظ عنوان
+app.post("/sub-titles", async (req, res) => {
+    try {
+        const receivedSecret = req.headers["x-hertz-secret"];
+        if (receivedSecret !== WEBHOOK_SECRET) return res.status(401).json({ error: "Unauthorized" });
+
+        const { page_id, title } = req.body;
+        if (!page_id || !title) return res.status(400).json({ error: "Missing fields" });
+
+        const { data, error } = await supabase
+            .from('sub_page_titles')
+            .upsert([{
+                page_id,
+                title,
+                updated_at: new Date().toISOString()
+            }], { onConflict: 'page_id' })
+            .select()
+            .single();
+
+        if (error) return res.status(500).json({ error: "DB error" });
+        res.status(200).json({ success: true, title: data });
     } catch (error) {
         res.status(500).json({ error: "Server error" });
     }

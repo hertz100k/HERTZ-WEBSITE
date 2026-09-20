@@ -10,8 +10,8 @@ const TRASH_CHANNEL_ID = "1549530638627897385";
 const TARGET_VOICE_CHANNEL_ID = "1550379501714808893";
 
 // 🛡️ الرولات المهمة
-const AUTHORIZED_ROLE_ID = "1550641497173659778"; // رول "بيانات . الشركة" — للتحكم
-const MEMBER_ROLE_ID = "1550646079475683419";     // رول "أعضاء السيرفر" — مايتشالش مع العقوبة
+const AUTHORIZED_ROLE_ID = "1550641497173659778"; // رول "بيانات . الشركة"
+const MEMBER_ROLE_ID = "1550646079475683419";     // رول "أعضاء السيرفر" — مايتشالش
 
 const PORT = process.env.PORT || 3000;
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
@@ -123,7 +123,7 @@ client.on('messageCreate', (message) => {
 });
 
 // ============================================================
-// 🛡️ دالة التحقق السريعة من الرول
+// 🛡️ دالة التحقق السريعة
 // ============================================================
 function isAuthorizedFast(message, userId) {
     try {
@@ -139,59 +139,46 @@ function isAuthorizedFast(message, userId) {
 }
 
 // ============================================================
-// ⚖️ دالة العقوبة: Timeout 30 دقيقة + إزالة الرولات (ما عدا أعضاء السيرفر)
+// ⚖️ دالة العقوبة
 // ============================================================
 async function punishUnauthorized(message, userId, userTag) {
     try {
         const member = await message.guild.members.fetch(userId);
 
-        // ✅ حماية: لو العضو هو صاحب السيرفر
         if (member.id === message.guild.ownerId) {
-            console.log(`👑 ${userTag} هو صاحب السيرفر — لا يمكن معاقبته`);
+            console.log(`👑 ${userTag} صاحب السيرفر — لا يمكن معاقبته`);
             return;
         }
-
-        // ✅ حماية: لو العضو هو البوت نفسه
         if (member.id === client.user.id) return;
 
         // 1. Timeout 30 دقيقة
         try {
-            await member.timeout(30 * 60 * 1000, "ريأكت غير مصرح به في تشانلات البيانات");
-            console.log(`⏱️ [عقوبة]: ${userTag} أخذ Timeout 30 دقيقة`);
+            await member.timeout(30 * 60 * 1000, "ريأكت غير مصرح به");
+            console.log(`⏱️ [عقوبة]: ${userTag} — Timeout 30 دقيقة`);
         } catch (err) {
-            console.error(`❌ فشل Timeout على ${userTag}:`, err.message);
+            console.error(`❌ فشل Timeout: ${err.message}`);
         }
 
-        // 2. إزالة الرولات (مع استثناء "أعضاء السيرفر")
+        // 2. إزالة الرولات (ما عدا "أعضاء السيرفر")
         try {
             const rolesToRemove = member.roles.cache.filter(role => {
-                // مش @everyone
-                if (role.id === message.guild.id) return false;
-                // ⭐ استثناء رول "أعضاء السيرفر"
-                if (role.id === MEMBER_ROLE_ID) return false;
-                // مش رول البوتات
-                if (role.managed) return false;
-                // البوت لازم يكون قادر يشيله
-                return role.editable;
+                if (role.id === message.guild.id) return false;        // @everyone
+                if (role.id === MEMBER_ROLE_ID) return false;          // ⭐ أعضاء السيرفر
+                if (role.managed) return false;                        // رولات البوتات
+                return role.editable;                                  // أقل من رول البوت
             });
 
             if (rolesToRemove.size > 0) {
-                await member.roles.remove(
-                    rolesToRemove,
-                    "عقوبة: ريأكت غير مصرح به في تشانلات البيانات"
-                );
-                console.log(`🎭 [عقوبة]: تم إزالة ${rolesToRemove.size} رول من ${userTag}`);
+                await member.roles.remove(rolesToRemove, "عقوبة: ريأكت غير مصرح به");
+                console.log(`🎭 تم إزالة ${rolesToRemove.size} رول من ${userTag}`);
                 console.log(`   الرولات المُزالة: ${rolesToRemove.map(r => r.name).join(', ')}`);
-                console.log(`   ⭐ تم الإبقاء على رول "أعضاء السيرفر"`);
-            } else {
-                console.log(`⚠️ مفيش رولات قابلة للإزالة من ${userTag}`);
             }
         } catch (err) {
-            console.error(`❌ فشل إزالة الرولات من ${userTag}:`, err.message);
+            console.error(`❌ فشل إزالة الرولات: ${err.message}`);
         }
 
     } catch (err) {
-        console.error(`❌ خطأ في تنفيذ العقوبة:`, err.message);
+        console.error(`❌ خطأ في العقوبة: ${err.message}`);
     }
 }
 
@@ -204,7 +191,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
     const message = reaction.message;
     if (!message.guild) return;
 
-    // ⚠️ فلتر سريع: هل الرسالة في أحد التشانلات الثلاثة؟
     const isTargetChannel =
         message.channelId === VISIT_CHANNEL_ID ||
         message.channelId === OLD_DATA_CHANNEL_ID ||
@@ -212,14 +198,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     if (!isTargetChannel) return;
 
-    // 🛡️ التحقق الفوري من الرول
+    // 🛡️ التحقق من الرول
     const authorized = isAuthorizedFast(message, user.id);
 
     if (!authorized) {
-        console.log(`⚠️ [مرفوض]: ${user.tag} (${user.id}) — يتم إزالة الريأكت + العقوبة`);
-        // إزالة الريأكت فورًا
+        console.log(`⚠️ [مرفوض]: ${user.tag} — إزالة الريأكت + عقوبة`);
         try { await reaction.users.remove(user.id); } catch (err) {}
-        // تنفيذ العقوبة (في الخلفية عشان مانبطأش)
         punishUnauthorized(message, user.id, user.tag).catch(err => {
             console.error("❌ خطأ في punishUnauthorized:", err);
         });
@@ -238,7 +222,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
     const msgContent = message.content || "";
     const msgEmbeds = message.embeds;
 
-    // ✅ في البيانات الجديدة → البيانات القديمة
     if (emoji === '✅') {
         if (message.channelId === VISIT_CHANNEL_ID) {
             try { await message.delete(); } catch (error) { return; }
@@ -261,7 +244,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
             console.log("✅ [TRASH] → [DATA-OLD]");
         }
     }
-    // ❌ في أي مكان
     else if (emoji === '❌') {
         if (message.channelId === VISIT_CHANNEL_ID || message.channelId === OLD_DATA_CHANNEL_ID) {
             try { await message.delete(); } catch (error) { return; }
@@ -285,7 +267,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
 client.once("ready", async () => {
     console.log(`✅ البوت اشتغل بنجاح باسم ${client.user.tag}`);
 
-    // جلب كل الأعضاء مسبقًا عشان السرعة
     try {
         const guilds = client.guilds.cache;
         for (const [guildId, guild] of guilds) {

@@ -120,7 +120,7 @@ client.on('messageCreate', (message) => {
 });
 
 // ============================================================
-// 🛡️ دالة التحقق — الرول فقط، مفيش استثناءات
+// 🛡️ دالة التحقق — الرول فقط
 // ============================================================
 async function isAuthorized(member) {
     if (!member) return false;
@@ -144,6 +144,30 @@ client.on('messageReactionAdd', async (reaction, user) => {
     const emoji = reaction.emoji.name;
     const msgContent = message.content || "";
     const msgEmbeds = message.embeds;
+
+    // ⚠️ التحقق: هل الرسالة في أحد التشانلات الثلاثة؟
+    const isTargetChannel =
+        message.channel.id === VISIT_CHANNEL_ID ||
+        message.channel.id === OLD_DATA_CHANNEL_ID ||
+        message.channel.id === TRASH_CHANNEL_ID;
+
+    if (!isTargetChannel) return;
+
+    // 🛡️ التحقق من الرول — لو مش عنده الرول، يتشال الريأكت فورًا
+    let member;
+    try {
+        member = await message.guild.members.fetch(user.id);
+    } catch (err) {
+        member = null;
+    }
+
+    const authorized = await isAuthorized(member);
+
+    if (!authorized) {
+        console.log(`⚠️ [محاولة مرفوضة]: ${user.tag} (${user.id}) — لا يمتلك رول "بيانات . الشركة"`);
+        try { await reaction.users.remove(user.id); } catch (err) {}
+        return;
+    }
 
     // ✅ في البيانات الجديدة → البيانات القديمة
     if (emoji === '✅') {
@@ -172,24 +196,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
     }
     // ❌ في أي مكان
     else if (emoji === '❌') {
-        // 🛡️ التحقق من الرول (فقط للبيانات الجديدة والقديمة)
-        if (message.channel.id === VISIT_CHANNEL_ID || message.channel.id === OLD_DATA_CHANNEL_ID) {
-            let member;
-            try {
-                member = await message.guild.members.fetch(user.id);
-            } catch (err) {
-                member = null;
-            }
-
-            const authorized = await isAuthorized(member);
-
-            if (!authorized) {
-                console.log(`⚠️ [محاولة مرفوضة]: ${user.tag} (${user.id}) — لا يمتلك رول "بيانات . الشركة"`);
-                try { await reaction.users.remove(user.id); } catch (err) {}
-                return;
-            }
-        }
-
         // ❌ في البيانات الجديدة أو القديمة → سلة المهملات
         if (message.channel.id === VISIT_CHANNEL_ID || message.channel.id === OLD_DATA_CHANNEL_ID) {
             try { await message.delete(); } catch (error) { return; }

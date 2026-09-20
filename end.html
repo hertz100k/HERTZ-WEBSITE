@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>متجر HERTZ | الحساب محظور</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Orbitron:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Cairo', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            min-height: 100vh;
+            min-height: 100dvh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            color: #ffffff;
+            overflow-x: hidden;
+            position: relative;
+            background: #040406;
+            touch-action: manipulation;
+        }
+
+        .bg-video {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -3;
+            filter: blur(15px) brightness(0.4) contrast(1.2);
+            transform: scale(1.1);
+            pointer-events: none;
+        }
+
+        .fog-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 4, 6, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        @keyframes rgbRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes textGlow {
+            0%, 100% { text-shadow: 0 0 15px rgba(255, 0, 85, 0.6); }
+            50% { text-shadow: 0 0 30px rgba(255, 0, 85, 0.9); }
+        }
+
+        /* شاشة الحظر */
+        .banned-container {
+            width: 100%;
+            max-width: 520px;
+            background: rgba(14, 14, 20, 0.9);
+            border: 1px solid rgba(255, 0, 85, 0.35);
+            border-radius: 26px;
+            padding: 30px 20px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.9), 0 0 30px rgba(255, 0, 85, 0.2);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            z-index: 10;
+            position: relative;
+            max-height: 85vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .logo-wrapper {
+            position: relative;
+            width: 90px;
+            height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .logo-img {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8));
+        }
+
+        .logo-outer-edge-led {
+            position: absolute;
+            inset: -6px;
+            z-index: 1;
+            pointer-events: none;
+            -webkit-mask-image: url('https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png');
+            mask-image: url('https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png');
+            -webkit-mask-size: contain;
+            mask-size: contain;
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            mask-position: center;
+        }
+
+        .logo-outer-edge-led::before {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: conic-gradient(from 0deg, #ff0055, #00e5ff, #00ff66, #ffea00, #ff0055);
+            animation: rgbRotate 3s linear infinite;
+        }
+
+        .banned-title {
+            font-family: 'Cairo', sans-serif;
+            font-size: clamp(24px, 5vw, 32px);
+            font-weight: 900;
+            color: #ff3366;
+            margin-bottom: 12px;
+            letter-spacing: 1px;
+            background: transparent;
+            text-shadow: 0 0 15px rgba(255, 0, 85, 0.6);
+            animation: textGlow 2s infinite;
+        }
+
+        .banned-text {
+            font-size: clamp(12px, 3.5vw, 13.5px);
+            color: #b0b0c2;
+            font-weight: 600;
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+
+        /* صندوق السبب */
+        .reason-box {
+            width: 100%;
+            background: rgba(255, 0, 85, 0.08);
+            border: 1px solid rgba(255, 0, 85, 0.3);
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 20px;
+            text-align: right;
+            display: none;
+        }
+
+        .reason-box.active {
+            display: block;
+        }
+
+        .reason-title {
+            font-size: 12px;
+            color: #ff3366;
+            font-weight: 800;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .reason-text {
+            font-size: 13px;
+            color: #fff;
+            font-weight: 700;
+            line-height: 1.5;
+            word-break: break-word;
+        }
+
+        .reason-date {
+            font-size: 11px;
+            color: #8f8fa8;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+
+        /* الأزرار */
+        .action-buttons {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .action-btn {
+            width: 100%;
+            height: 48px;
+            min-height: 48px;
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 900;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            font-family: 'Cairo', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .unban-btn {
+            background: linear-gradient(135deg, #00e5ff 0%, #0088cc 100%);
+            color: #040406;
+            box-shadow: 0 5px 20px rgba(0, 229, 255, 0.4);
+        }
+
+        .unban-btn:hover, .unban-btn:active {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 229, 255, 0.6);
+        }
+
+        .unban-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .discord-btn {
+            background: rgba(88, 101, 242, 0.15);
+            border: 1px solid #5865F2;
+            color: #5865F2;
+        }
+
+        .discord-btn:hover, .discord-btn:active {
+            background: rgba(88, 101, 242, 0.3);
+        }
+
+        /* Toast */
+        .toast-notification {
+            position: fixed;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(14, 14, 22, 0.95);
+            border: 1px solid rgba(0, 229, 255, 0.5);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 14px;
+            font-size: 14px;
+            font-weight: 800;
+            box-shadow: 0 10px 30px rgba(0, 229, 255, 0.3);
+            z-index: 999999;
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .toast-notification.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast-notification.success {
+            border-color: rgba(0, 255, 102, 0.5);
+            box-shadow: 0 10px 30px rgba(0, 255, 102, 0.3);
+        }
+
+        /* Loading */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 4, 6, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 99999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00e5ff;
+            border-radius: 50%;
+            animation: rgbRotate 0.8s linear infinite;
+        }
+
+        .loading-text {
+            font-size: 14px;
+            font-weight: 800;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- خلفية الفيديو والضباب -->
+    <video autoplay loop muted playsinline class="bg-video">
+        <source src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/vidssave.com%20THIS%20IS%204K%20ANIME%20(Solo%20Leveling)%20720P.mp4" type="video/mp4">
+    </video>
+    <div class="fog-overlay"></div>
+
+    <!-- Toast -->
+    <div id="toastNotification" class="toast-notification">
+        <span id="toastIcon">⚠️</span> <span id="toastText">تم تنفيذ العملية بنجاح!</span>
+    </div>
+
+    <!-- Loading -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loadingText">جاري إرسال الطلب...</div>
+    </div>
+
+    <!-- محتوى الشاشة في المنتصف -->
+    <div class="banned-container">
+        <div class="logo-wrapper">
+            <div class="logo-outer-edge-led"></div>
+            <img src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png" alt="Logo" class="logo-img" />
+        </div>
+        
+        <h1 class="banned-title">حسابك محظور</h1>
+        <p class="banned-text">عذراً، تم حظر حسابك والبيانات المرتبطة بك من تصفح الموقع بناءً على تعليمات الإدارة والأمان.</p>
+
+        <!-- صندوق سبب الحظر -->
+        <div id="reasonBox" class="reason-box">
+            <div class="reason-title">🔴 سبب الحظر:</div>
+            <div class="reason-text" id="reasonText">جاري التحميل...</div>
+            <div class="reason-date" id="reasonDate"></div>
+        </div>
+
+        <!-- الأزرار -->
+        <div class="action-buttons">
+            <button id="requestUnbanBtn" class="action-btn unban-btn" onclick="requestUnban()">
+                📩 تقديم طلب فك حظر
+            </button>
+            <a href="https://discord.gg/fake-invite-link" target="_blank" class="action-btn discord-btn">
+                💬 الدعم عبر Discord
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // 🎯 API Config
+        // ============================================================
+        const API_URL = "https://inspiring-adventure-production-368b.up.railway.app";
+        const WEBHOOK_SECRET = "HERTZ_ULTRA_SECURE_2026_X9kLmPq2NvR8sT";
+
+        let toastTimeout = null;
+        let currentUserData = null;
+
+        // ============================================================
+        // 🎯 إظهار Toast
+        // ============================================================
+        function showToastMessage(msg, isSuccess = false) {
+            const toast = document.getElementById('toastNotification');
+            const toastText = document.getElementById('toastText');
+            const toastIcon = document.getElementById('toastIcon');
+            if (!toast) return;
+            clearTimeout(toastTimeout);
+            toastText.innerText = msg;
+            if (isSuccess) {
+                toast.classList.add('success');
+                toastIcon.innerText = '✅';
+            } else {
+                toast.classList.remove('success');
+                toastIcon.innerText = '⚠️';
+            }
+            toast.classList.add('show');
+            toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        // ============================================================
+        // 🎯 جلب بيانات المستخدم من localStorage
+        // ============================================================
+        function getCurrentUser() {
+            try {
+                const session = localStorage.getItem('hertz_active_session');
+                if (session) {
+                    return JSON.parse(session);
+                }
+            } catch (e) {}
+            return null;
+        }
+
+        // ============================================================
+        // 🎯 جلب سبب الحظر من الـ API
+        // ============================================================
+        async function fetchBanReason() {
+            const user = getCurrentUser();
+            if (!user) {
+                document.getElementById('reasonBox').classList.add('active');
+                document.getElementById('reasonText').innerText = 'غير مسجل - الحساب محظور';
+                return;
+            }
+
+            currentUserData = user;
+
+            try {
+                const response = await fetch(
+                    `${API_URL}/check-ban?phone=${encodeURIComponent(user.phone || '')}&user_code=${encodeURIComponent(user.userCode || '')}`,
+                    { headers: { 'X-Hertz-Secret': WEBHOOK_SECRET } }
+                );
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.banned && data.ban_info) {
+                        const info = data.ban_info;
+                        document.getElementById('reasonBox').classList.add('active');
+                        document.getElementById('reasonText').innerText = info.reason || 'مخالفة شروط الاستخدام';
+                        
+                        if (info.banned_at) {
+                            const date = new Date(info.banned_at);
+                            document.getElementById('reasonDate').innerText = 
+                                `⏱️ تاريخ الحظر: ${date.toLocaleString('ar-EG')}`;
+                        }
+                    } else {
+                        document.getElementById('reasonBox').classList.add('active');
+                        document.getElementById('reasonText').innerText = 'مخالفة شروط الاستخدام';
+                    }
+                }
+            } catch (e) {
+                console.log('Ban info error:', e);
+                document.getElementById('reasonBox').classList.add('active');
+                document.getElementById('reasonText').innerText = 'مخالفة شروط الاستخدام';
+            }
+        }
+
+        // ============================================================
+        // 🎯 طلب فك الحظر
+        // ============================================================
+        async function requestUnban() {
+            const user = currentUserData || getCurrentUser();
+            if (!user) {
+                showToastMessage('يجب تسجيل الدخول أولاً');
+                return;
+            }
+
+            const btn = document.getElementById('requestUnbanBtn');
+            btn.disabled = true;
+            btn.innerText = '⏳ جاري الإرسال...';
+
+            document.getElementById('loadingOverlay').classList.add('active');
+
+            try {
+                const response = await fetch(`${API_URL}/unban-request`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Hertz-Secret': WEBHOOK_SECRET
+                    },
+                    body: JSON.stringify({
+                        username: user.username,
+                        phone: user.phone,
+                        user_code: user.userCode,
+                        email: user.email,
+                        reason: 'طلب فك الحظر من المستخدم'
+                    })
+                });
+
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').classList.remove('active');
+                    btn.disabled = false;
+                    btn.innerText = '📩 تقديم طلب فك حظر';
+
+                    if (response.ok) {
+                        showToastMessage('✅ تم إرسال طلبك للإدارة بنجاح! سيتم مراجعته قريباً.', true);
+                    } else {
+                        showToastMessage('⚠️ حدث خطأ، جرب تاني لاحقاً');
+                    }
+                }, 1500);
+
+            } catch (e) {
+                setTimeout(() => {
+                    document.getElementById('loadingOverlay').classList.remove('active');
+                    btn.disabled = false;
+                    btn.innerText = '📩 تقديم طلب فك حظر';
+                    showToastMessage('⚠️ فشل الاتصال بالسيرفر');
+                }, 1000);
+            }
+        }
+
+        // ============================================================
+        // 🎯 تشغيل عند التحميل
+        // ============================================================
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchBanReason();
+        });
+
+        // حماية الصفحة
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            showToastMessage("⚠️ مقفولة لعدم الاختراق");
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12' || e.keyCode === 123) {
+                e.preventDefault();
+                return false;
+            }
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+    </script>
+
+</body>
+</html>

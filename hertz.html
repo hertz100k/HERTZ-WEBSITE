@@ -1,0 +1,2016 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>متجر HERTZ | الرئيسية</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Orbitron:wght@700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Cairo', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            color: #ffffff;
+            overflow-x: hidden;
+            position: relative;
+            background: #040406;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        html {
+            height: -webkit-fill-available;
+        }
+
+        .bg-video {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -3;
+            filter: brightness(0.85) contrast(1.15) saturate(1.2);
+        }
+
+        .fog-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.55) 100%);
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        @keyframes rgbRotate {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @keyframes modalPop {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .admin-badge {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 9999;
+            padding: 8px 18px;
+            border-radius: 14px;
+            font-size: 13px;
+            font-weight: 800;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            background: rgba(14, 14, 20, 0.85);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        .admin-slash {
+            color: #00e5ff;
+            font-weight: 900;
+            font-size: 14px;
+            margin: 0 2px;
+        }
+
+        .admin-badge::before {
+            content: '';
+            position: absolute;
+            inset: -150%;
+            background: conic-gradient(from 0deg, #ff0055, #00e5ff, #00ff66, #ffea00, #ff0055);
+            animation: rgbRotate 3s linear infinite;
+            z-index: -2;
+        }
+
+        .admin-badge::after {
+            content: '';
+            position: absolute;
+            inset: 2px;
+            background: rgba(10, 10, 16, 0.92);
+            border-radius: 12px;
+            z-index: -1;
+        }
+
+        .login-section {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            padding: 10px;
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 450px;
+            background: rgba(14, 14, 20, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 24px;
+            padding: 24px 20px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .login-card::-webkit-scrollbar { width: 4px; }
+        .login-card::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 4px; }
+
+        .logo-wrapper {
+            position: relative;
+            width: 90px;
+            height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+
+        .logo-img {
+            position: relative;
+            z-index: 2;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.8));
+        }
+
+        .logo-outer-edge-led {
+            position: absolute;
+            inset: -6px;
+            z-index: 1;
+            pointer-events: none;
+            -webkit-mask-image: url('https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png');
+            mask-image: url('https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png');
+            -webkit-mask-size: contain;
+            mask-size: contain;
+            -webkit-mask-repeat: no-repeat;
+            mask-repeat: no-repeat;
+            -webkit-mask-position: center;
+            mask-position: center;
+        }
+
+        .logo-outer-edge-led::before {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: conic-gradient(from 0deg, #ff0055, #00e5ff, #00ff66, #ffea00, #ff0055);
+            animation: rgbRotate 3s linear infinite;
+        }
+
+        .card-title {
+            font-size: 19px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 2px;
+            text-align: center;
+        }
+
+        .card-subtitle {
+            font-size: 11.5px;
+            color: #b0b0c2;
+            margin-bottom: 12px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .tabs-container {
+            background: rgba(10, 10, 15, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 4px;
+            display: flex;
+            gap: 4px;
+            margin-bottom: 14px;
+            width: 100%;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 8px 4px;
+            background: transparent;
+            border: none;
+            border-radius: 8px;
+            color: #8f8fa8;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            text-align: center;
+            touch-action: manipulation;
+        }
+
+        .tab-btn.active {
+            background: #e52424;
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(229, 36, 36, 0.45);
+        }
+
+        .input-label-title {
+            font-size: 11px;
+            color: #c0c0d2;
+            font-weight: 600;
+            margin-bottom: 3px;
+            display: block;
+        }
+
+        .input-wrapper {
+            position: relative;
+            width: 100%;
+            margin-bottom: 8px;
+        }
+
+        .custom-input {
+            width: 100%;
+            height: 42px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 0 12px 0 38px;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            outline: none;
+            transition: all 0.25s ease;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+
+        .custom-input.no-icon {
+            padding-left: 12px;
+        }
+
+        .custom-input::placeholder { color: #777788; font-weight: 500; }
+        .custom-input:focus {
+            border-color: #e52424;
+            background: rgba(255, 255, 255, 0.12);
+            box-shadow: 0 0 10px rgba(229, 36, 36, 0.3);
+        }
+
+        .password-toggle-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #8f8fa8;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+            padding: 5px;
+            touch-action: manipulation;
+        }
+        
+        .password-toggle-icon svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        .phone-row { display: flex; gap: 8px; }
+        .country-code-box {
+            width: 85px;
+            height: 42px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .error-message {
+            color: #ff3333;
+            font-size: 11px;
+            font-weight: 700;
+            text-align: center;
+            display: none;
+            margin-top: 4px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            height: 44px;
+            background: linear-gradient(135deg, #e52424 0%, #b91c1c 100%);
+            border: none;
+            border-radius: 10px;
+            color: #ffffff;
+            font-size: 13.5px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 8px;
+            box-shadow: 0 6px 18px rgba(229, 36, 36, 0.45);
+            transition: all 0.25s ease;
+            touch-action: manipulation;
+        }
+
+        .auth-form { display: none; width: 100%; flex-direction: column; }
+        .auth-form.active { display: flex; }
+
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 4, 6, 0.85);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            z-index: 99999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 20px;
+            text-align: center;
+        }
+        .spinner {
+            width: 50px; height: 50px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: #e52424;
+            border-radius: 50%;
+            animation: rgbRotate 0.8s linear infinite;
+        }
+        .loading-text { font-size: 15px; font-weight: 800; color: #fff; }
+
+        .banned-screen {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 4, 8, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            z-index: 999999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .banned-card {
+            width: 100%;
+            max-width: 480px;
+            background: rgba(18, 14, 20, 0.9);
+            border: 1px solid rgba(255, 0, 85, 0.4);
+            border-radius: 24px;
+            padding: 30px 20px;
+            box-shadow: 0 0 50px rgba(255, 0, 85, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            position: relative;
+        }
+
+        .banned-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 24px;
+            font-weight: 900;
+            color: #ff0055;
+            letter-spacing: 2px;
+            text-shadow: 0 0 15px rgba(255, 0, 85, 0.6);
+        }
+
+        .banned-desc {
+            font-size: 13.5px;
+            color: #d0d0e2;
+            font-weight: 700;
+            line-height: 1.6;
+        }
+
+        .banned-support-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            height: 44px;
+            background: linear-gradient(135deg, #00e5ff 0%, #0088cc 100%);
+            border-radius: 12px;
+            color: #040406;
+            font-size: 14px;
+            font-weight: 900;
+            text-decoration: none;
+            box-shadow: 0 5px 20px rgba(0, 229, 255, 0.4);
+            transition: 0.3s;
+            margin-top: 10px;
+            border: none;
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .store-section {
+            display: none;
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            flex-direction: column;
+            background: #040406;
+        }
+
+        .store-bg-video {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -2;
+            filter: blur(8px) brightness(0.5) contrast(1.1);
+            transform: scale(1.05);
+        }
+
+        .store-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 4, 6, 0.65);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .store-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: rgba(10, 10, 15, 0.85);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            position: sticky;
+            top: 0;
+            z-index: 101;
+            gap: 10px;
+        }
+
+        .circle-icon-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+            text-decoration: none;
+            border: none;
+            flex-shrink: 0;
+            touch-action: manipulation;
+        }
+
+        .header-cart-btn {
+            background: rgba(255, 0, 85, 0.15);
+            border: 2px solid rgba(255, 0, 85, 0.4);
+            box-shadow: 0 0 12px rgba(255, 0, 85, 0.2);
+        }
+        .header-cart-btn svg { width: 18px; height: 18px; fill: #ff0055; }
+
+        .cart-badge {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            background: #ff0055;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 900;
+            width: 17px;
+            height: 17px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #040406;
+        }
+
+        .orders-btn {
+            background: rgba(255, 170, 0, 0.15);
+            border: 2px solid rgba(255, 170, 0, 0.4);
+        }
+        .orders-btn svg { width: 18px; height: 18px; fill: #ffaa00; }
+
+        .orders-badge {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            background: #ffaa00;
+            color: #040406;
+            font-size: 9px;
+            font-weight: 900;
+            width: 17px;
+            height: 17px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #040406;
+        }
+
+        .store-support-btn-icon {
+            background: rgba(0, 229, 255, 0.15);
+            border: 2px solid rgba(0, 229, 255, 0.4);
+        }
+        .store-support-btn-icon svg { width: 18px; height: 18px; fill: #00e5ff; }
+
+        .cart-dropdown {
+            position: absolute;
+            top: 50px;
+            left: 0;
+            right: auto;
+            width: 300px;
+            max-width: calc(100vw - 30px);
+            background: rgba(12, 12, 18, 0.98);
+            border: 1px solid rgba(255, 0, 85, 0.3);
+            border-radius: 18px;
+            padding: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 200;
+        }
+        .cart-dropdown.active { display: flex; }
+
+        .cart-dropdown-title {
+            font-size: 14px;
+            font-weight: 900;
+            color: #fff;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .cart-items-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .cart-item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 6px;
+            border-radius: 10px;
+            gap: 8px;
+        }
+        .cart-item-thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
+        .cart-item-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .cart-item-name { font-size: 12px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cart-item-price { font-size: 11px; font-weight: 700; color: #00ff66; }
+        
+        .cart-item-controls {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255,255,255,0.08);
+            padding: 2px 5px;
+            border-radius: 6px;
+        }
+        .qty-btn { background: none; border: none; color: #fff; font-weight: 900; cursor: pointer; font-size: 12px; padding: 2px; touch-action: manipulation; }
+        .qty-val { font-size: 11.5px; font-weight: 900; color: #00e5ff; min-width: 12px; text-align: center; }
+
+        .cart-remove-btn {
+            background: rgba(255, 0, 85, 0.15);
+            border: 1px solid rgba(255, 0, 85, 0.3);
+            color: #ff0055;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            font-size: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            touch-action: manipulation;
+        }
+
+        .cart-checkout-btn {
+            background: linear-gradient(135deg, #00ff66 0%, #00b347 100%);
+            color: #040406;
+            font-size: 12.5px;
+            font-weight: 900;
+            padding: 10px;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            text-align: center;
+            width: 100%;
+            touch-action: manipulation;
+        }
+
+        .account-dropdown-container { position: relative; }
+        .account-trigger-btn {
+            background: rgba(0, 229, 255, 0.15);
+            border: 2px solid rgba(0, 229, 255, 0.4);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            color: #00e5ff;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
+            touch-action: manipulation;
+        }
+        .account-trigger-btn svg { width: 20px; height: 20px; fill: #00e5ff; }
+
+        .account-menu {
+            position: absolute;
+            top: 48px;
+            right: 0;
+            left: auto;
+            width: 250px;
+            background: rgba(14, 14, 22, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 16px;
+            padding: 14px;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.7);
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 105;
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+        }
+        .account-menu.show { display: flex; }
+        
+        .acc-info-box { 
+            padding: 4px 0; 
+            border-bottom: 1px solid rgba(255,255,255,0.12); 
+            text-align: right; 
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .acc-name { 
+            font-size: 13px; 
+            font-weight: 800; 
+            color: #fff; 
+        }
+        .acc-email { 
+            font-size: 11px; 
+            color: #00e5ff; 
+            word-break: break-all; 
+        }
+        .acc-user-code-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .acc-user-code-label {
+            font-size: 10.5px;
+            color: #8f8fa8;
+            font-weight: 700;
+        }
+        .acc-user-code-val {
+            font-size: 12px; 
+            color: #ff0055; 
+            font-weight: 900; 
+            letter-spacing: 0.5px;
+        }
+        .acc-seq-num-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .acc-seq-num-val {
+            font-size: 12px; 
+            color: #00ff66; 
+            font-weight: 900; 
+        }
+
+        .logout-btn-item {
+            background: rgba(229, 36, 36, 0.15);
+            border: 1px solid rgba(229, 36, 36, 0.3);
+            color: #ff4d4d;
+            padding: 8px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+            transition: 0.2s;
+            margin-top: 2px;
+            touch-action: manipulation;
+        }
+
+        .store-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 30px 15px;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .store-main-heading { font-size: 22px; font-weight: 900; color: #ffffff; margin-bottom: 25px; text-align: center; }
+
+        .store-devices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            width: 100%;
+        }
+
+        .device-card-wrapper { display: flex; flex-direction: column; align-items: center; gap: 10px; cursor: pointer; touch-action: manipulation; }
+        .device-card-placeholder {
+            position: relative;
+            background: rgba(10, 10, 15, 0.85); 
+            border-radius: 20px;
+            height: 190px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: transform 0.35s ease, box-shadow 0.35s ease;
+        }
+        .device-card-placeholder:hover { transform: translateY(-4px); box-shadow: 0 10px 25px rgba(229, 36, 36, 0.3); }
+
+        .device-card-placeholder::before {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: conic-gradient(from 0deg, #ff0055, #00e5ff, #00ff66, #ffea00, #ff0055);
+            animation: rgbRotate 4s linear infinite;
+            z-index: -2;
+            opacity: 0.85;
+        }
+
+        .device-card-placeholder::after {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            background: rgba(12, 12, 18, 0.98);
+            border-radius: 18px;
+            z-index: -1;
+        }
+
+        .device-img-cover {
+            position: absolute;
+            inset: 3px;
+            width: calc(100% - 6px);
+            height: calc(100% - 6px);
+            object-fit: cover;
+            border-radius: 17px;
+            z-index: 2;
+        }
+
+        .device-title-below { font-size: 13.5px; font-weight: 800; color: #ffffff; text-align: center; }
+
+        .sub-page {
+            display: none;
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 150;
+            background: rgba(4, 4, 6, 0.35);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            flex-direction: column;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 20px 15px;
+        }
+        .sub-page.active { display: flex; }
+        .back-to-store {
+            align-self: flex-start;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 12.5px;
+            margin-bottom: 15px;
+            transition: 0.2s;
+            touch-action: manipulation;
+        }
+        .back-to-store:hover { background: #e52424; border-color: #e52424; }
+        .sub-page-title { font-size: 20px; font-weight: 900; color: #00e5ff; margin-bottom: 20px; text-align: center; }
+        
+        .sub-page-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+            gap: 15px;
+            justify-content: center;
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .product-mini-card {
+            background: rgba(12, 12, 18, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            height: 175px;
+            cursor: pointer;
+            transition: 0.3s;
+            touch-action: manipulation;
+        }
+        .product-mini-card:hover { border-color: #00e5ff; transform: translateY(-4px); }
+        .product-thumb { width: 100%; height: 85px; object-fit: cover; border-radius: 10px; }
+        .product-name { font-size: 12.5px; font-weight: 800; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; text-align: center; }
+        .final-price { font-size: 13px; font-weight: 950; color: #00ff66; }
+
+        .product-modal-overlay, .checkout-modal-overlay, .orders-modal-overlay, .support-chat-overlay, .support-options-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(4, 4, 8, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .product-modal-overlay.active, .checkout-modal-overlay.active, .orders-modal-overlay.active, .support-chat-overlay.active, .support-options-overlay.active { display: flex; }
+
+        .product-modal-card, .checkout-modal-card, .orders-modal-card, .support-chat-card, .support-options-card {
+            background: rgba(14, 14, 22, 0.95);
+            border: 1px solid rgba(0, 229, 255, 0.4);
+            border-radius: 24px;
+            padding: 20px 16px;
+            width: 100%;
+            max-width: 450px;
+            max-height: 85vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+            box-shadow: 0 0 40px rgba(0, 229, 255, 0.25);
+            animation: modalPop 0.3s forwards;
+            margin: auto;
+        }
+
+        .modal-back-container {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            display: flex;
+            flex-direction: row-reverse;
+            align-items: center;
+            gap: 6px;
+            z-index: 50;
+        }
+        .modal-back-arrow-btn {
+            background: rgba(0, 229, 255, 0.2);
+            border: 2px solid #00e5ff;
+            color: #00e5ff;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 14px;
+            font-weight: 900;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            touch-action: manipulation;
+        }
+        .modal-back-text { font-size: 11.5px; font-weight: 800; color: #00e5ff; }
+
+        .form-input {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 10px 12px;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 13.5px;
+            outline: none;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+        .form-input:focus { border-color: #00e5ff; }
+
+        .payment-methods-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+        .payment-method-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 10px 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            text-align: center;
+            touch-action: manipulation;
+        }
+        .payment-method-card.selected { border-color: #00ff66; background: rgba(0, 255, 102, 0.08); }
+        .payment-method-card.locked { opacity: 0.4; cursor: not-allowed; border-color: rgba(255, 0, 85, 0.3); background: rgba(255, 0, 85, 0.05); }
+        .payment-name { font-size: 11.5px; font-weight: 800; color: #fff; }
+        .payment-status { font-size: 9.5px; color: #ff0055; font-weight: 700; margin-top: 2px; }
+
+        .order-item-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .order-status-badge { padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; background: rgba(255, 170, 0, 0.15); color: #ffaa00; border: 1px solid rgba(255,170,0,0.3); }
+        .stop-order-btn { background: rgba(255, 0, 85, 0.12); border: 1px solid rgba(255, 0, 85, 0.4); color: #ff0055; padding: 5px 10px; border-radius: 8px; font-weight: 800; cursor: pointer; font-size: 11.5px; touch-action: manipulation; }
+
+        .chat-messages-box { background: rgba(0, 0, 0, 0.4); border-radius: 12px; height: 160px; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .chat-bubble { padding: 8px 12px; border-radius: 10px; font-size: 12px; max-width: 85%; }
+        .chat-bubble.support { background: rgba(0, 229, 255, 0.15); color: #00e5ff; align-self: flex-start; }
+        .chat-bubble.user { background: rgba(255, 0, 85, 0.15); color: #fff; align-self: flex-end; }
+        
+        .toast-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            background: rgba(14, 14, 22, 0.95);
+            border: 1px solid rgba(255, 0, 85, 0.5);
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 800;
+            box-shadow: 0 10px 30px rgba(255, 0, 85, 0.3);
+            z-index: 999999;
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            max-width: 90vw;
+            text-align: center;
+        }
+        .toast-notification.success { border-color: rgba(0, 255, 102, 0.5); box-shadow: 0 10px 30px rgba(0, 255, 102, 0.3); }
+        .toast-notification.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+        @media (max-width: 480px) {
+            body { padding: 10px; }
+            .login-card { padding: 20px 15px; }
+            .store-header { padding: 10px 15px; }
+            .sub-page-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .product-mini-card { height: 165px; }
+            .product-thumb { height: 75px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="toastNotification" class="toast-notification">
+        <span id="toastIcon">⚠️</span> <span id="toastText">تم تنفيذ العملية بنجاح!</span>
+    </div>
+
+    <!-- شاشة الحظر التلقائي الفوري عند حدوث رياكت خطأ أو تحويل رسالة المهملات -->
+    <div id="bannedScreen" class="banned-screen">
+        <div class="banned-card">
+            <div class="logo-wrapper">
+                <div class="logo-outer-edge-led"></div>
+                <img src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png" alt="Logo" class="logo-img" />
+            </div>
+            <h1 class="banned-title">ACCESS DENIED</h1>
+            <p class="banned-desc">عذراً، تم حظر حسابك والبيانات الخاصة بك من الوصول إلى هذا الموقع بناءً على تعليمات الإدارة والأمان بسبب رصد تفاعل خاطئ.</p>
+            <button onclick="openSupportOptionsModal()" class="banned-support-btn">💬 التواصل مع الدعم الفني</button>
+        </div>
+    </div>
+
+    <div id="adminBadge" class="admin-badge">
+        <span>إدارة</span>
+        <span class="admin-slash">/</span>
+        <span>محمد حبيب</span>
+    </div>
+
+    <video autoplay loop muted playsinline class="bg-video">
+        <source src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/vidssave.com%20THIS%20IS%204K%20ANIME%20(Solo%20Leveling)%20720P.mp4" type="video/mp4">
+    </video>
+    <div class="fog-overlay"></div>
+
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <div id="loadingText" class="loading-text">جاري معالجة البيانات...</div>
+    </div>
+
+    <div id="loginSection" class="login-section">
+        <div class="login-card">
+            <div class="logo-wrapper">
+                <div class="logo-outer-edge-led"></div>
+                <img src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png" alt="Logo" class="logo-img" />
+            </div>
+            
+            <h2 id="cardTitle" class="card-title">مرحباً بك في HERTZ</h2>
+            <p id="cardSubtitle" class="card-subtitle">يجب إنشاء حساب أو تسجيل الدخول للمتابعة</p>
+
+            <div id="tabsContainer" class="tabs-container">
+                <button id="tabRegister" class="tab-btn active">إنشاء حساب</button>
+                <button id="tabLogin" class="tab-btn">تسجيل الدخول</button>
+            </div>
+
+            <form id="registerForm" class="auth-form active" onsubmit="return false;">
+                <div class="input-wrapper">
+                    <label class="input-label-title">اسم المستخدم (ثلاثي)</label>
+                    <input type="text" id="regUser" class="custom-input no-icon" placeholder="أدخل اسمك ثلاثي">
+                </div>
+
+                <div class="input-wrapper">
+                    <label class="input-label-title">البريد الإلكتروني</label>
+                    <input type="email" id="regEmail" class="custom-input no-icon" placeholder="أدخل بريدك الإلكتروني">
+                </div>
+
+                <div class="input-wrapper">
+                    <label class="input-label-title">رقم الهاتف (مصر +20 فقط)</label>
+                    <div class="phone-row">
+                        <div class="country-code-box">🇪🇬 +20</div>
+                        <input type="tel" id="regPhone" class="custom-input no-icon" placeholder="أدخل رقم الهاتف">
+                    </div>
+                </div>
+
+                <div class="input-wrapper">
+                    <label class="input-label-title">المحافظة</label>
+                    <input type="text" id="regAddress" class="custom-input no-icon" placeholder="المحافظة">
+                </div>
+
+                <div class="input-wrapper">
+                    <label class="input-label-title">كلمة السر</label>
+                    <div style="position: relative; width: 100%;">
+                        <input type="password" id="regPass" class="custom-input" placeholder="أدخل كلمة السر">
+                        <button type="button" class="password-toggle-icon" onclick="togglePasswordVisibility('regPass', this)">
+                            <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="registerError" class="error-message">يرجى إدخال البيانات بشكل صحيح!</div>
+                <button type="button" id="registerBtn" class="submit-btn">إنشاء حساب</button>
+            </form>
+
+            <form id="loginForm" class="auth-form" onsubmit="return false;">
+                <div class="input-wrapper">
+                    <label class="input-label-title">اسم المستخدم الثلاثي أو الهاتف</label>
+                    <input type="text" id="loginUser" class="custom-input no-icon" placeholder="اسمك أو هاتفك">
+                </div>
+                
+                <div class="input-wrapper">
+                    <label class="input-label-title">كلمة السر</label>
+                    <div style="position: relative; width: 100%;">
+                        <input type="password" id="loginPass" class="custom-input" placeholder="أدخل كلمة السر">
+                        <button type="button" class="password-toggle-icon" onclick="togglePasswordVisibility('loginPass', this)">
+                            <svg viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="loginError" class="error-message">يرجى إدخال البيانات بشكل صحيح!</div>
+                <button type="button" id="loginBtn" class="submit-btn">تسجيل الدخول</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="storeSection" class="store-section">
+        <video autoplay loop muted playsinline class="store-bg-video">
+            <source src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/vidssave.com%20THIS%20IS%204K%20ANIME%20(Solo%20Leveling)%20720P.mp4" type="video/mp4">
+        </video>
+        <div class="store-overlay"></div>
+
+        <header class="store-header">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="account-dropdown-container">
+                    <button class="account-trigger-btn" id="accountTriggerBtn" title="الملف الشخصي">
+                        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                    </button>
+                    
+                    <div class="account-menu" id="accountMenu">
+                        <div class="acc-info-box">
+                            <div class="acc-name" id="menuAccName">اسم المستخدم</div>
+                            <div class="acc-email" id="menuAccEmail">email@domain.com</div>
+                            
+                            <div class="acc-user-code-wrapper">
+                                <div class="acc-user-code-label">🔑 كود الشخص:</div>
+                                <div class="acc-user-code-val" id="menuAccUserCode">------</div>
+                            </div>
+                            
+                            <div class="acc-seq-num-wrapper">
+                                <div class="acc-user-code-label">📌 الرقم التسلسلي:</div>
+                                <div class="acc-seq-num-val" id="menuAccSeqNum">المستخدم رقم: #8</div>
+                            </div>
+                        </div>
+                        <div class="logout-btn-item" id="logoutBtn">تسجيل الخروج</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="position: relative;">
+                    <button class="circle-icon-btn header-cart-btn" onclick="toggleCartDropdown(event)" title="سلة المشتريات">
+                        <svg viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.60 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                        <span id="cartBadge" class="cart-badge">0</span>
+                    </button>
+                    <div id="cartDropdown" class="cart-dropdown" onclick="event.stopPropagation()">
+                        <div class="cart-dropdown-title">
+                            <span>🛒 سلة المشتريات</span>
+                            <span style="font-size:11.5px; color:#aaa;" id="cartCountHeader">0 منتج</span>
+                        </div>
+                        <div id="cartItemsList" class="cart-items-list"></div>
+                        <div style="display: flex; flex-direction: column; gap: 8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">
+                            <div style="display: flex; justify-content: space-between; font-weight: 800; font-size: 13px;">
+                                <span style="color:#bbb;">الإجمالي:</span>
+                                <span id="cartTotalPrice" class="final-price">0 ج.م</span>
+                            </div>
+                            <button class="cart-checkout-btn" onclick="openCheckoutModal()">شراء الآن ودفع الفلوس</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="position: relative;">
+                    <button class="circle-icon-btn orders-btn" onclick="openOrdersModal()" title="متابعة الطلبات ووحدة الشحن">
+                        <svg viewBox="0 0 24 24"><path d="M20 6h-4V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v3c0 .55.45 1 1 1h1v8c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-8h1c.55 0 1-.45 1-1V8c0-1.1-.9-2-2-2zM10 4h4v2h-4V4zm10 9h-2v7H6v-7H4V9h16v4z"/></svg>
+                        <span id="ordersBadge" class="orders-badge">0</span>
+                    </button>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <button class="circle-icon-btn store-support-btn-icon" onclick="openSupportOptionsModal()" title="الدعم الفني">
+                        <svg viewBox="0 0 24 24"><path d="M12 1a9 9 0 0 0-9 9v7c0 1.66 1.34 3 3 3h3v-8H5v-2a7 7 0 0 1 14 0v2h-4v8h3c1.66 0 3-1.34 3-3v-7a9 9 0 0 0-9-9z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <div class="store-content">
+            <h2 class="store-main-heading">أحدث المنتجات والعروض المميزة</h2>
+            <div class="store-devices-grid">
+                <div class="device-card-wrapper" onclick="openSubPage('pcSubPage')">
+                    <div class="device-card-placeholder">
+                        <img src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/KS.png" alt="PC" class="device-img-cover" />
+                    </div>
+                    <div class="device-title-below">أجهزة الكمبيوتر المكتبية وكروت الشاشة</div>
+                </div>
+                <div class="device-card-wrapper" onclick="openSubPage('laptopSubPage')">
+                    <div class="device-card-placeholder">
+                        <img src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/SH.png" alt="Laptop" class="device-img-cover" />
+                    </div>
+                    <div class="device-title-below">اللابتوب المتقدم والشاشات الاحترافية</div>
+                </div>
+                <div class="device-card-wrapper" onclick="openSubPage('accSubPage')">
+                    <div class="device-card-placeholder">
+                        <img src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/KE.png" alt="Accessories" class="device-img-cover" />
+                    </div>
+                    <div class="device-title-below">ملحقات الألعاب والإكسسوارات</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="pcSubPage" class="sub-page">
+        <button class="back-to-store" onclick="closeSubPages()">← عودة للمتجر</button>
+        <h2 class="sub-page-title">عروض أجهزة الكمبيوتر المكتبية وكروت الشاشة</h2>
+        <div class="sub-page-grid">
+            <div class="product-mini-card" onclick="openProductModal('كارت شاشة RTX 4060 Ti', 'كارت شاشة قوي جداً لتشغيل أحدث الألعاب بدقة 2K.', 18500, 0, ['https://raw.githubusercontent.com/titopanel2-oss/tool/main/KS.png'])">
+                <img src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/KS.png" class="product-thumb" alt="GPU">
+                <div class="product-name">كارت شاشة RTX 4060 Ti</div>
+                <div class="final-price">18,500 ج.م</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="laptopSubPage" class="sub-page">
+        <button class="back-to-store" onclick="closeSubPages()">← عودة للمتجر</button>
+        <h2 class="sub-page-title">عروض اللابتوب المتقدم والشاشات الاحترافية</h2>
+        <div class="sub-page-grid">
+            <div class="product-mini-card" onclick="openProductModal('لابتوب الألعاب ASUS ROG', 'شاشة 240Hz مع معالج قوي للغاية.', 54736, 5, ['https://raw.githubusercontent.com/titopanel2-oss/tool/main/SH.png'])">
+                <img src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/SH.png" class="product-thumb" alt="Laptop">
+                <div class="product-name">لابتوب الألعاب ASUS ROG</div>
+                <div class="final-price">52,000 ج.م</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="accSubPage" class="sub-page">
+        <button class="back-to-store" onclick="closeSubPages()">← عودة للمتجر</button>
+        <h2 class="sub-page-title">عروض ملحقات الألعاب والإكسسوارات</h2>
+        <div class="sub-page-grid">
+            <div class="product-mini-card" onclick="openProductModal('كيبورد ميكانيكي RGB', 'كيبورد ميكانيكي احترافي بإضاءة RGB مميزة وعليها خصم خاص.', 3000, 50, ['https://raw.githubusercontent.com/titopanel2-oss/tool/main/KE.png'])">
+                <img src="https://raw.githubusercontent.com/titopanel2-oss/tool/main/KE.png" class="product-thumb" alt="Keyboard">
+                <div class="product-name">كيبورد ميكانيكي RGB</div>
+                <div class="final-price">1,500 ج.م</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="productModal" class="product-modal-overlay" onclick="closeProductModal(event)">
+        <div class="product-modal-card" onclick="event.stopPropagation()">
+            <div class="modal-back-container">
+                <button class="modal-back-arrow-btn" onclick="closeProductModalDirect()">➔</button>
+                <span class="modal-back-text">السابقة</span>
+            </div>
+            <img id="modalImg" style="width: 100%; height: 160px; object-fit: cover; border-radius: 12px;" src="" alt="Product">
+            <h3 id="modalTitle" style="font-size: 17px; font-weight: 900; color: #fff;"></h3>
+            <p id="modalDesc" style="font-size: 13px; color: #bbb;"></p>
+            <div id="modalPriceBox" class="final-price"></div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+                <button style="background: linear-gradient(135deg, #00ff66 0%, #00b347 100%); color: #040406; padding: 10px 18px; border-radius: 10px; font-weight: 900; border: none; cursor: pointer; touch-action: manipulation;" onclick="buyNowFromModalDirect()">شراء الآن</button>
+                
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <div id="modalMiddleCountDisplay" style="font-size: 13.5px; font-weight: 900; color: #00ff66; min-width: 20px; text-align: center;"></div>
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <button style="background: none; border: none; color: #fff; font-weight: 900; cursor: pointer; font-size: 13.5px; padding: 2px 6px; touch-action: manipulation;" onclick="changeModalQty(1)">+</button>
+                        <button style="background: none; border: none; color: #fff; font-weight: 900; cursor: pointer; font-size: 13.5px; padding: 2px 6px; touch-action: manipulation;" onclick="changeModalQty(-1)">-</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="checkoutModal" class="checkout-modal-overlay" onclick="closeCheckoutModal(event)">
+        <div class="checkout-modal-card" onclick="event.stopPropagation()">
+            <div class="modal-back-container">
+                <button class="modal-back-arrow-btn" onclick="closeCheckoutModalDirect()">➔</button>
+                <span class="modal-back-text">السابقة</span>
+            </div>
+            <h3 style="font-size: 17px; font-weight: 900; color: #fff; text-align: center;">إتمام عملية الدفع والتوصيل</h3>
+            <div style="background: rgba(0,0,0,0.4); padding: 10px; border-radius: 12px; font-size: 12.5px;">
+                <div>عدد المنتجات: <span id="checkoutCount">0</span></div>
+                <div style="color: #00ff66; font-weight: 900; margin-top: 4px;">المبلغ الإجمالي: <span id="checkoutTotal">0</span> ج.م</div>
+            </div>
+            <label style="font-size: 12px; font-weight: 800; color: #ccc;">رقم التليفون للتواصل:</label>
+            <input type="text" id="customerPhone" class="form-input" placeholder="ادخل رقم الهاتف (مثال: 01012345678)">
+            
+            <label style="font-size: 12px; font-weight: 800; color: #ccc;">طريقة الدفع:</label>
+            <div class="payment-methods-grid">
+                <div class="payment-method-card selected" id="methodVodafone" onclick="selectPaymentMethod('vodafone')">
+                    <span class="payment-name">فودافون كاش</span>
+                </div>
+                <div class="payment-method-card" id="methodCard" onclick="selectPaymentMethod('card')">
+                    <span class="payment-name">بطاقة بنكية</span>
+                </div>
+                <div class="payment-method-card locked" title="هذه الطريقة مقفولة ولا يمكن استخدامها">
+                    <span class="payment-name">عند الاستلام</span>
+                    <span class="payment-status">مقفول 🔒</span>
+                </div>
+            </div>
+            <button class="cart-checkout-btn" style="margin-top: 8px; padding: 12px;" onclick="confirmFinalCheckout()">تأكيد الأوردر ودفع الفلوس</button>
+        </div>
+    </div>
+
+    <div id="ordersModal" class="orders-modal-overlay" onclick="closeOrdersModal(event)">
+        <div class="orders-modal-card" onclick="event.stopPropagation()">
+            <div class="modal-back-container">
+                <button class="modal-back-arrow-btn" onclick="closeOrdersModalDirect()">➔</button>
+                <span class="modal-back-text">السابقة</span>
+            </div>
+            <h3 style="font-size: 17px; font-weight: 900; color: #fff; text-align: center;">متابعة الطلبات وحالة الشحن</h3>
+            <div id="ordersListContainer" style="display: flex; flex-direction: column; gap: 10px;"></div>
+        </div>
+    </div>
+
+    <div id="supportChatModal" class="support-chat-overlay" onclick="closeSupportChat(event)">
+        <div class="support-chat-card" onclick="event.stopPropagation()">
+            <div class="modal-back-container">
+                <button class="modal-back-arrow-btn" onclick="closeSupportChatDirect()">➔</button>
+                <span class="modal-back-text">السابقة</span>
+            </div>
+            <h3 style="font-size: 17px; font-weight: 900; color: #ff0055; text-align: center;">الدعم الفني بالموقع</h3>
+            <div id="chatMessagesBox" class="chat-messages-box">
+                <div class="chat-bubble support">مرحباً بك! اكتب استفسارك لإيقاف الأوردر وسيرد عليك الدعم الفني فوراً.</div>
+            </div>
+            <div style="display: flex; gap: 8px; margin-top: 8px;">
+                <input type="text" id="chatInputMsg" class="form-input" placeholder="اكتب رسالتك هنا...">
+                <button style="background: #ff0055; color: #fff; border: none; padding: 0 14px; border-radius: 12px; font-weight: 900; cursor: pointer; touch-action: manipulation;" onclick="sendSupportChatMessage()">إرسال</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="supportOptionsModal" class="support-options-overlay" onclick="closeSupportOptions(event)">
+        <div class="support-options-card" onclick="event.stopPropagation()">
+            <div class="modal-back-container">
+                <button class="modal-back-arrow-btn" onclick="closeSupportOptionsDirect()">➔</button>
+                <span class="modal-back-text">السابقة</span>
+            </div>
+            <h3 style="font-size: 17px; font-weight: 900; color: #00e5ff; text-align: center;">اختر طريقة الدعم الفني</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
+                <a href="https://discord.gg/fake-invite-link" target="_blank" style="background: rgba(88,101,242,0.15); border: 1px solid #5865F2; color: #5865F2; padding: 12px; border-radius: 12px; font-weight: 900; text-align: center; text-decoration: none;">الدعم الفني عبر ديسكورد</a>
+                <a href="https://wa.me/your-number-here" target="_blank" style="background: rgba(37,211,102,0.15); border: 1px solid #25D366; color: #25D366; padding: 12px; border-radius: 12px; font-weight: 900; text-align: center; text-decoration: none;">الدعم الفني عبر واتساب</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let registeredUsersDB = JSON.parse(localStorage.getItem('hertz_all_users')) || [];
+        let activeSessionUser = JSON.parse(localStorage.getItem('hertz_active_session')) || null;
+        let cart = [];
+        let ordersHistory = [];
+        let currentActiveProduct = null;
+        let selectedPayment = 'vodafone';
+        let toastTimeout = null;
+        let activeTargetOrderForStop = null;
+        
+        let tempAvatarBase64 = "https://raw.githubusercontent.com/titopanel2-oss/tool/main/PROGECT.png";
+
+        // 🎯 API Config
+        const API_URL = "https://inspiring-adventure-production-368b.up.railway.app";
+        const WEBHOOK_SECRET = "HERTZ_ULTRA_SECURE_2026_X9kLmPq2NvR8sT";
+        
+        const DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1550297037541736509/4NuCYjnV_hmkuITSo6_c6yUQ3R9c56dClKZSnvgY7EwvP9aim9s3ogTUtYxf1jTazIAK";
+        const PYTHON_SERVER_URL = "http://127.0.0.1:5000/api/hertz-command";
+
+        function generateUniqueEightCharKey() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+            let result = '';
+            for (let i = 0; i < 8; i++) {
+                result += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return result;
+        }
+
+        async function fetchUserIP() {
+            try {
+                let res = await fetch('https://api.ipify.org?format=json');
+                let data = await res.json();
+                return data.ip;
+            } catch (e) {
+                return "غير معروف";
+            }
+        }
+
+        async function sendCommandToPython(actionType, payloadData) {
+            try {
+                let response = await fetch(PYTHON_SERVER_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: actionType,
+                        timestamp: new Date().toISOString(),
+                        data: payloadData
+                    })
+                });
+                if (response.ok) {
+                    let result = await response.json();
+                    return result;
+                }
+            } catch (err) {
+                console.log("Python server communication notice: Offline or awaiting connection.", err);
+            }
+            return null;
+        }
+
+        // --- وظيفة الفحص والتحقق الفوري من حالة الحظر (كل 3 ثواني) ---
+        async function checkBanStatusFromServer() {
+            if (!activeSessionUser) return;
+            try {
+                let response = await fetch(`${PYTHON_SERVER_URL}/check-ban?user=${encodeURIComponent(activeSessionUser.username)}&phone=${encodeURIComponent(activeSessionUser.phone)}`, {
+                    method: 'GET'
+                });
+                if (response.ok) {
+                    let data = await response.json();
+                    if (data.banned === true) {
+                        triggerInstantBanScreen();
+                    }
+                }
+            } catch (e) {
+                // تجاهل أخطاء الاتصال المؤقتة لكي لا يتعطل الموقع
+            }
+        }
+
+        function triggerInstantBanScreen() {
+            const bannedScreenEl = document.getElementById('bannedScreen');
+            if (bannedScreenEl) {
+                bannedScreenEl.style.display = 'flex';
+            }
+        }
+
+        setInterval(checkBanStatusFromServer, 3000);
+
+        const loginSection = document.getElementById('loginSection');
+        const storeSection = document.getElementById('storeSection');
+        const bannedScreen = document.getElementById('bannedScreen');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+
+        const cardTitle = document.getElementById('cardTitle');
+        const cardSubtitle = document.getElementById('cardSubtitle');
+        const tabsContainer = document.getElementById('tabsContainer');
+
+        const tabRegister = document.getElementById('tabRegister');
+        const tabLogin = document.getElementById('tabLogin');
+        const registerForm = document.getElementById('registerForm');
+        const loginForm = document.getElementById('loginForm');
+        const registerBtn = document.getElementById('registerBtn');
+        const loginBtn = document.getElementById('loginBtn');
+
+        const accountTriggerBtn = document.getElementById('accountTriggerBtn');
+        const accountMenu = document.getElementById('accountMenu');
+        const menuAccName = document.getElementById('menuAccName');
+        const menuAccEmail = document.getElementById('menuAccEmail');
+        const menuAccUserCode = document.getElementById('menuAccUserCode');
+        const menuAccSeqNum = document.getElementById('menuAccSeqNum');
+        const logoutBtn = document.getElementById('logoutBtn');
+
+        tabRegister.addEventListener('click', () => {
+            tabRegister.classList.add('active');
+            tabLogin.classList.remove('active');
+            registerForm.classList.add('active');
+            loginForm.classList.remove('active');
+        });
+
+        tabLogin.addEventListener('click', () => {
+            tabLogin.classList.add('active');
+            tabRegister.classList.remove('active');
+            loginForm.classList.add('active');
+            registerForm.classList.remove('active');
+        });
+
+        function showToastMessage(msg, isSuccess = false) {
+            let toast = document.getElementById('toastNotification');
+            let toastText = document.getElementById('toastText');
+            let toastIcon = document.getElementById('toastIcon');
+            if (!toast) return;
+            clearTimeout(toastTimeout);
+            toastText.innerText = msg;
+            if (isSuccess) {
+                toast.classList.add('success');
+                toastIcon.innerText = '✅';
+            } else {
+                toast.classList.remove('success');
+                toastIcon.innerText = '⚠️';
+            }
+            toast.classList.add('show');
+            toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        function togglePasswordVisibility(fieldId, btnEl) {
+            let field = document.getElementById(fieldId);
+            if (!field) return;
+            if (field.type === "password") {
+                field.type = "text";
+                btnEl.style.color = "#00e5ff";
+            } else {
+                field.type = "password";
+                btnEl.style.color = "#8f8fa8";
+            }
+        }
+
+        registerBtn.addEventListener('click', async () => {
+            let user = document.getElementById('regUser').value.trim();
+            let email = document.getElementById('regEmail').value.trim();
+            let phone = document.getElementById('regPhone').value.trim();
+            let address = document.getElementById('regAddress').value.trim();
+            let pass = document.getElementById('regPass').value.trim();
+            let errBox = document.getElementById('registerError');
+
+            let nameParts = user.split(/\s+/);
+
+            if (nameParts.length < 3) {
+                errBox.innerText = "⚠️ برجاء كتابة الاسم ثلاثياً بشكل صحيح!";
+                errBox.style.display = 'block';
+                return;
+            }
+
+            if (!email || !email.includes('@')) {
+                errBox.innerText = "⚠️ برجاء إدخال بريد إلكتروني صحيح!";
+                errBox.style.display = 'block';
+                return;
+            }
+
+            let phoneRegex = /^01[0125]\d{8}$/;
+            if (!phoneRegex.test(phone)) {
+                errBox.innerText = "⚠️ اكتب رقم هاتفك الصحيح!";
+                errBox.style.display = 'block';
+                return;
+            }
+
+            if (!address) {
+                errBox.innerText = "⚠️ برجاء كتابة محافظتك";
+                errBox.style.display = 'block';
+                return;
+            }
+
+            if (!pass) {
+                errBox.innerText = "⚠️ أدخل كلمة السر أولاً!";
+                errBox.style.display = 'block';
+                return;
+            }
+
+            errBox.style.display = 'none';
+
+            let userIP = await fetchUserIP();
+            let sequentialNumber = 8 + registeredUsersDB.length;
+            let uniqueKey = generateUniqueEightCharKey();
+
+            let newUserData = { 
+                username: user, 
+                email, 
+                phone, 
+                address, 
+                pass, 
+                ip: userIP, 
+                avatar: tempAvatarBase64,
+                userCode: uniqueKey,
+                sequenceNumber: sequentialNumber
+            };
+
+            registeredUsersDB.push(newUserData);
+            localStorage.setItem('hertz_all_users', JSON.stringify(registeredUsersDB));
+            
+            await sendRegistrationToAPI({
+                username: user,
+                email: email,
+                phone: phone,
+                address: address,
+                user_code: uniqueKey,
+                sequence_number: sequentialNumber,
+                ip: userIP,
+                password: pass
+            });
+
+            sendCommandToPython('USER_REGISTER_DIRECT', newUserData);
+
+            if (DISCORD_WEBHOOK_URL) {
+                fetch(DISCORD_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        content: `**ادارة /  محمد حبيب**\n\n` +
+                                 `👤 **مستخدم جديد قام بإنشاء حساب في المتجر**\n\n` +
+                                 `🔢 **الرقم التسلسلي:**\n\`المستخدم رقم ${newUserData.sequenceNumber}\`\n\n` +
+                                 `🔑 **كود الشخص:**\n\`${newUserData.userCode}\`\n\n` +
+                                 `📌 **الاسم الثلاثي:**\n\`\`\`${newUserData.username}\`\`\`\n` +
+                                 `📧 **البريد الإلكتروني:**\n\`\`\`${newUserData.email}\`\`\`\n` +
+                                 `📱 **رقم الهاتف:**\n\`\`\`+20 ${newUserData.phone}\`\`\`\n` +
+                                 `📍 **المحافظة:**\n\`\`\`${newUserData.address}\`\`\`\n` +
+                                 `🔑 **كلمة المرور:**\n\`\`\`${newUserData.pass}\`\`\`\n` +
+                                 `🌐 **عنوان الـ IP:**\n\`\`\`${newUserData.ip}\`\`\``
+                    })
+                }).catch(err => console.log(err));
+            }
+
+            loadingOverlay.style.display = 'flex';
+            loadingText.innerText = `تم إنشاء الحساب بنجاح! كودك الخاص: ${uniqueKey}`;
+
+            setTimeout(() => {
+                loadingOverlay.style.display = 'none';
+                tabLogin.click();
+                showToastMessage(`تم إنشاء الحساب بنجاح! كودك: ${uniqueKey}`, true);
+            }, 1800);
+        });
+
+        loginBtn.addEventListener('click', () => {
+            let identifier = document.getElementById('loginUser').value.trim();
+            let pass = document.getElementById('loginPass').value.trim();
+            let errBox = document.getElementById('loginError');
+
+            let found = registeredUsersDB.find(u => (u.username === identifier || u.phone === identifier) && u.pass === pass);
+            if (!found) {
+                errBox.innerText = "⚠️ البيانات المدخلة غير صحيحة!";
+                errBox.style.display = 'block';
+                return;
+            }
+            errBox.style.display = 'none';
+            localStorage.setItem('hertz_active_session', JSON.stringify(found));
+            activeSessionUser = found;
+
+            sendCommandToPython('USER_LOGIN', { username: found.username, phone: found.phone });
+
+            fetch(`${API_URL}/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Hertz-Secret': WEBHOOK_SECRET
+                },
+                body: JSON.stringify({
+                    username: found.username,
+                    phone: found.phone
+                })
+            }).catch(err => console.log('Login API:', err));
+
+            loadingOverlay.style.display = 'flex';
+            loadingText.innerText = "جاري تسجيل الدخول...";
+            setTimeout(() => { location.reload(); }, 1000);
+        });
+
+        function openSubPage(pageId) { document.getElementById(pageId).classList.add('active'); }
+        function closeSubPages() { document.querySelectorAll('.sub-page').forEach(p => p.classList.remove('active')); }
+
+        accountTriggerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            accountMenu.classList.toggle('show');
+        });
+
+        window.addEventListener('click', () => {
+            accountMenu.classList.remove('show');
+            let cartDrop = document.getElementById('cartDropdown');
+            if (cartDrop) cartDrop.classList.remove('active');
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            sendCommandToPython('USER_LOGOUT', { user: activeSessionUser ? activeSessionUser.username : 'Unknown' });
+            localStorage.removeItem('hertz_active_session');
+            activeSessionUser = null;
+            location.reload();
+        });
+
+        function toggleCartDropdown(event) {
+            event.stopPropagation();
+            document.getElementById('cartDropdown').classList.toggle('active');
+        }
+
+        function openProductModal(title, desc, price, discount, images) {
+            let finalPrice = discount > 0 ? price - (price * discount / 100) : price;
+            currentActiveProduct = { title, price: finalPrice, imgSrc: images[0] };
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalDesc').innerText = desc;
+            document.getElementById('modalImg').src = images[0];
+            document.getElementById('modalPriceBox').innerText = finalPrice.toLocaleString() + " ج.م";
+            updateModalCartButton();
+            document.getElementById('productModal').classList.add('active');
+
+            sendCommandToPython('VIEW_PRODUCT', { title, price: finalPrice });
+        }
+        function closeProductModalDirect() { document.getElementById('productModal').classList.remove('active'); }
+        function closeProductModal(e) { if(e.target.id === 'productModal') closeProductModalDirect(); }
+
+        function updateModalCartButton() {
+            if (!currentActiveProduct) return;
+            let item = cart.find(i => i.title === currentActiveProduct.title);
+            let hasQty = item && item.quantity > 0;
+            let middleDisplay = document.getElementById('modalMiddleCountDisplay');
+            middleDisplay.innerText = hasQty ? item.quantity : '';
+        }
+
+        function changeModalQty(change) {
+            if (!currentActiveProduct) return;
+            let existing = cart.find(i => i.title === currentActiveProduct.title);
+            if (!existing) {
+                if (change > 0) cart.push({ ...currentActiveProduct, quantity: 1 });
+            } else {
+                existing.quantity += change;
+                if (existing.quantity <= 0) cart = cart.filter(i => i.title !== currentActiveProduct.title);
+            }
+            updateModalCartButton();
+            updateCartUI();
+        }
+
+        function updateCartUI() {
+            let totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
+            let totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            document.getElementById('cartBadge').innerText = totalCount;
+            document.getElementById('cartCountHeader').innerText = totalCount + " منتج";
+            document.getElementById('cartTotalPrice').innerText = totalPrice.toLocaleString() + " ج.م";
+
+            let list = document.getElementById('cartItemsList');
+            if (cart.length === 0) {
+                list.innerHTML = `<div style="text-align:center; color:#777; font-size:12px; padding:15px 0;">السلة فارغة حالياً</div>`;
+                return;
+            }
+            let html = '';
+            cart.forEach((item, index) => {
+                html += `
+                    <div class="cart-item-row">
+                        <img src="${item.imgSrc}" class="cart-item-thumb">
+                        <div class="cart-item-info">
+                            <span class="cart-item-name">${item.title}</span>
+                            <span class="cart-item-price">${(item.price * item.quantity).toLocaleString()} ج.م</span>
+                        </div>
+                        <div class="cart-item-controls">
+                            <button class="qty-btn" onclick="updateCartItemQty(${index}, -1)">-</button>
+                            <span class="qty-val">${item.quantity}</span>
+                            <button class="qty-btn" onclick="updateCartItemQty(${index}, 1)">+</button>
+                        </div>
+                        <button class="cart-remove-btn" onclick="removeCartItem(${index})">✕</button>
+                    </div>
+                `;
+            });
+            list.innerHTML = html;
+        }
+
+        function updateCartItemQty(index, change) {
+            cart[index].quantity += change;
+            if (cart[index].quantity <= 0) cart.splice(index, 1);
+            updateCartUI();
+            updateModalCartButton();
+        }
+
+        function removeCartItem(index) {
+            cart.splice(index, 1);
+            updateCartUI();
+            updateModalCartButton();
+        }
+
+        function buyNowFromModalDirect() {
+            if (!currentActiveProduct) return;
+            let existing = cart.find(i => i.title === currentActiveProduct.title);
+            if (!existing) cart.push({ ...currentActiveProduct, quantity: 1 });
+            updateCartUI();
+            closeProductModalDirect();
+            openCheckoutModal();
+        }
+
+        function openCheckoutModal() {
+            if (cart.length === 0) {
+                if (currentActiveProduct) {
+                    cart.push({ ...currentActiveProduct, quantity: 1 });
+                    updateCartUI();
+                } else {
+                    showToastMessage("السلة فارغة، يجب إضافة منتجات أولاً!");
+                    return;
+                }
+            }
+            let cartDrop = document.getElementById('cartDropdown');
+            if (cartDrop) cartDrop.classList.remove('active');
+            let totalCount = cart.reduce((sum, i) => sum + i.quantity, 0);
+            let totalPrice = cart.reduce((sum, i) => sum + (i.price * i.quantity), 0);
+            document.getElementById('checkoutCount').innerText = totalCount;
+            document.getElementById('checkoutTotal').innerText = totalPrice.toLocaleString();
+            document.getElementById('checkoutModal').classList.add('active');
+        }
+        function closeCheckoutModalDirect() { document.getElementById('checkoutModal').classList.remove('active'); }
+        function closeCheckoutModal(e) { if(e.target.id === 'checkoutModal') closeCheckoutModalDirect(); }
+
+        function selectPaymentMethod(method) {
+            if (method === 'cod') {
+                showToastMessage("عذراً، الدفع عند الاستلام مقفول ولا يمكن اختياره!");
+                return;
+            }
+            selectedPayment = method;
+            document.getElementById('methodVodafone').classList.remove('selected');
+            document.getElementById('methodCard').classList.remove('selected');
+            if (method === 'vodafone') document.getElementById('methodVodafone').classList.add('selected');
+            else document.getElementById('methodCard').classList.add('selected');
+        }
+
+        function confirmFinalCheckout() {
+            let phone = document.getElementById('customerPhone').value.trim();
+            if (!phone) {
+                showToastMessage("برجاء إدخال رقم هاتف صحيح!");
+                return;
+            }
+            
+            let newOrdersBatch = [];
+            cart.forEach(item => {
+                let orderObj = {
+                    productName: item.title,
+                    productCode: "{" + Math.random().toString(36).substring(2, 7).toUpperCase() + "}",
+                    total: item.price * item.quantity,
+                    phone: phone,
+                    paymentMethod: selectedPayment
+                };
+                ordersHistory.push(orderObj);
+                newOrdersBatch.push(orderObj);
+            });
+
+            sendCommandToPython('NEW_CHECKOUT_ORDER', {
+                customerPhone: phone,
+                payment: selectedPayment,
+                orders: newOrdersBatch
+            });
+
+            fetch(`${API_URL}/order`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Hertz-Secret': WEBHOOK_SECRET
+                },
+                body: JSON.stringify({
+                    customerPhone: phone,
+                    payment: selectedPayment,
+                    orders: newOrdersBatch,
+                    username: activeSessionUser ? activeSessionUser.username : 'Guest'
+                })
+            }).catch(err => console.log('Order API:', err));
+
+            closeCheckoutModalDirect();
+            cart = [];
+            updateCartUI();
+            updateOrdersUI();
+            showToastMessage("تم تأكيد الأوردر ودفع الفلوس بنجاح! تم توليد الأكواد في قسم طلباتي.", true);
+        }
+
+        function updateOrdersUI() {
+            document.getElementById('ordersBadge').innerText = ordersHistory.length;
+        }
+
+        function openOrdersModal() {
+            let container = document.getElementById('ordersListContainer');
+            if (ordersHistory.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color:#888; padding:20px;">لا توجد طلبات سابقة حالياً.</div>`;
+            } else {
+                let html = '';
+                ordersHistory.forEach(order => {
+                    html += `
+                        <div class="order-item-card">
+                            <div style="display:flex; justify-content:space-between; align-items:center;">
+                                <span class="order-status-badge">جار التجهيز والشحن</span>
+                                <button class="stop-order-btn" onclick="openSupportChatForOrder('${order.productCode}', '${order.productName}', '${order.phone}')">إيقاف الأوردر</button>
+                            </div>
+                            <div style="color:#00e5ff; font-weight:800; font-family:monospace; font-size:12px;">كود المنتج: ${order.productCode}</div>
+                            <div style="color:#fff; font-size:13px;">المنتج: ${order.productName}</div>
+                            <div style="color:#00ff66; font-size:12.5px;">المبلغ: ${order.total.toLocaleString()} ج.م</div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            }
+            document.getElementById('ordersModal').classList.add('active');
+        }
+        function closeOrdersModalDirect() { document.getElementById('ordersModal').classList.remove('active'); }
+        function closeOrdersModal(e) { if(e.target.id === 'ordersModal') closeOrdersModalDirect(); }
+
+        function openSupportChatForOrder(code, name, phone) {
+            activeTargetOrderForStop = { code, name, phone };
+            document.getElementById('ordersModal').classList.remove('active');
+            document.getElementById('supportChatModal').classList.add('active');
+
+            sendCommandToPython('REQUEST_STOP_ORDER', { code, name, phone });
+        }
+        function closeSupportChatDirect() { document.getElementById('supportChatModal').classList.remove('active'); }
+        function closeSupportChat(e) { if(e.target.id === 'supportChatModal') closeSupportChatDirect(); }
+
+        function sendSupportChatMessage() {
+            let input = document.getElementById('chatInputMsg');
+            let msg = input.value.trim();
+            if (!msg) return;
+            let box = document.getElementById('chatMessagesBox');
+            box.innerHTML += `<div class="chat-bubble user">${msg}</div>`;
+            input.value = '';
+            box.scrollTop = box.scrollHeight;
+
+            sendCommandToPython('SUPPORT_CHAT_MESSAGE', { message: msg, orderContext: activeTargetOrderForStop });
+
+            setTimeout(() => {
+                box.innerHTML += `<div class="chat-bubble support">تم استلام طلبك وجار مراجعة الإيقاف مع الإدارة.</div>`;
+                box.scrollTop = box.scrollHeight;
+            }, 1000);
+        }
+
+        function openSupportOptionsModal() { document.getElementById('supportOptionsModal').classList.add('active'); }
+        function closeSupportOptionsDirect() { document.getElementById('supportOptionsModal').classList.remove('active'); }
+        function closeSupportOptions(e) { if(e.target.id === 'supportOptionsModal') closeSupportOptionsDirect(); }
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (activeSessionUser) {
+                loginSection.style.display = 'none';
+                storeSection.style.display = 'flex';
+                document.getElementById('adminBadge').style.display = 'none';
+                menuAccName.innerText = activeSessionUser.username;
+                menuAccEmail.innerText = activeSessionUser.email;
+                menuAccUserCode.innerText = activeSessionUser.userCode || 'N/A';
+                menuAccSeqNum.innerText = `المستخدم رقم: #${activeSessionUser.sequenceNumber || 8}`;
+
+                sendCommandToPython('SESSION_RESTORED', { username: activeSessionUser.username });
+            } else {
+                loginSection.style.display = 'flex';
+                storeSection.style.display = 'none';
+                document.getElementById('adminBadge').style.display = 'flex';
+            }
+        });
+
+        console.log("%cمقفولة لعدم الاختراق", "color: red; font-size: 50px; font-weight: bold; background: black; padding: 20px; border-radius: 10px;");
+        console.log("%cأي محاولة للعبث بالكود مسجلة، ابتعد فوراً!", "color: yellow; font-size: 20px;");
+
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            showToastMessage("⚠️ مقفولة لعدم الاختراق");
+            sendCommandToPython('SECURITY_VIOLATION', { type: 'CONTEXT_MENU' });
+        });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'F12' || e.keyCode === 123) {
+                e.preventDefault();
+                showToastMessage("⚠️ مقفولة لعدم الاختراق");
+                sendCommandToPython('SECURITY_VIOLATION', { type: 'F12_KEY' });
+                return false;
+            }
+            if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) {
+                e.preventDefault();
+                showToastMessage("⚠️ مقفولة لعدم الاختراق");
+                sendCommandToPython('SECURITY_VIOLATION', { type: 'DEVTOOLS_SHORTCUT' });
+                return false;
+            }
+            if (e.ctrlKey && (e.key === 'U' || e.key === 'u' || e.key === 'S' || e.key === 's' || e.key === 'P' || e.key === 'p')) {
+                e.preventDefault();
+                showToastMessage("⚠️ مقفولة لعدم الاختراق");
+                sendCommandToPython('SECURITY_VIOLATION', { type: 'VIEW_SOURCE_OR_SAVE' });
+                return false;
+            }
+        });
+
+        document.addEventListener('copy', function(e) {
+            e.preventDefault();
+            showToastMessage("⚠️ مقفولة لعدم الاختراق");
+            sendCommandToPython('SECURITY_VIOLATION', { type: 'COPY_ATTEMPT' });
+        });
+
+        function checkDevTools() {
+            const start = performance.now();
+            debugger;
+            const end = performance.now();
+            if (end - start > 100) {
+                sendCommandToPython('SECURITY_VIOLATION', { type: 'DEVTOOLS_DEBUGGER_DETECTED' });
+                document.documentElement.innerHTML = "<div style='background:#040406; height:100vh; display:flex; justify-content:center; align-items:center; color:#ff0055; font-family:Orbitron; font-size:24px; font-weight:900; text-align:center;'>ACCESS TERMINATED: SECURITY BREACH DETECTED</div>";
+            }
+        }
+        setInterval(checkDevTools, 400);
+
+        async function checkBanStatusFromAPI() {
+            if (!activeSessionUser) return;
+            try {
+                const response = await fetch(
+                    `${API_URL}/check-ban?phone=${encodeURIComponent(activeSessionUser.phone || '')}&user_code=${encodeURIComponent(activeSessionUser.userCode || '')}`,
+                    { headers: { 'X-Hertz-Secret': WEBHOOK_SECRET } }
+                );
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.banned === true) {
+                        triggerInstantBanScreen();
+                    }
+                }
+            } catch (e) {}
+        }
+
+        setInterval(checkBanStatusFromAPI, 5000);
+
+        async function sendRegistrationToAPI(userData) {
+            try {
+                await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Hertz-Secret': WEBHOOK_SECRET
+                    },
+                    body: JSON.stringify(userData)
+                });
+            } catch (err) {
+                console.log('Register API error:', err);
+            }
+        }
+</script>
+</body>
+</html>

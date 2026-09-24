@@ -46,9 +46,15 @@ const leaveProcessing = new Set();
 
 const clearProcessing = new Set();
 
+// ✅ قراءة المفتاح من أي اسم متغير محتمل
+const SUPABASE_KEY =
+    process.env.SUPABASE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_SERVICE_KEY;
+
 const supabase = createClient(
     process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
+    SUPABASE_KEY
 );
 
 // ============================================================
@@ -103,7 +109,7 @@ async function isAuthorizedFast(guild, userId) {
 }
 
 // ============================================================
-// دالة إرسال رسالة الترحيب (منع تكرار - 4 طبقات)
+// دالة إرسال رسالة الترحيب (منع تكرار 4 طبقات)
 // ============================================================
 async function sendWelcomeMessage(guild, member) {
     const memberId = member.id;
@@ -176,7 +182,7 @@ async function sendWelcomeMessage(guild, member) {
 }
 
 // ============================================================
-// دالة إرسال رسالة المغادرة (منع تكرار - 4 طبقات)
+// دالة إرسال رسالة المغادرة (منع تكرار 4 طبقات)
 // ============================================================
 async function sendLeaveMessage(guild, memberId, memberTag) {
     if (leftMembers.has(memberId)) return;
@@ -302,7 +308,7 @@ async function pollMembers() {
 }
 
 // ============================================================
-// نظام النقل الرقابي (Move) - منع تكرار 5 طبقات
+// نظام النقل الرقابي (Move) - 5 طبقات منع تكرار
 // ============================================================
 client.on('messageReactionAdd', async (reaction, user) => {
     if (user.bot) return;
@@ -318,14 +324,10 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     const messageId = message.id;
 
-    // ✅ طبقة 1
     if (movedMessages.has(messageId)) return;
-    // ✅ طبقة 2
     if (sourceMessagesDeleted.has(messageId)) return;
-    // ✅ طبقة 3
     if (processingLocks.has(messageId)) return;
 
-    // ✅ طبقة 4: قفل فوري
     processingLocks.add(messageId);
 
     try {
@@ -365,14 +367,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
             return;
         }
 
-        // ✅ طبقة 5: منع تكرار في نفس الخزنة
         const vaultKey = `${targetVaultId}:${messageId}`;
         if (vaultMessages.has(vaultKey)) {
             processingLocks.delete(messageId);
             return;
         }
 
-        // ✅ علامة النقل النهائية BEFORE أي async
         movedMessages.add(messageId);
         vaultMessages.add(vaultKey);
 
@@ -490,6 +490,8 @@ client.once("ready", async () => {
     console.log(`✅ HERTZ ADMIN BOT is online: ${client.user.tag}`);
     console.log(`📋 SERVER MEMBERS INTENT: ${client.options.intents.has('GuildMembers') ? '✅ مفعّل' : '❌ مش مفعّل'}`);
     console.log(`📋 GUILD ID: ${GUILD_ID}`);
+    console.log(`📋 SUPABASE URL: ${process.env.SUPABASE_URL ? '✅ موجود' : '❌ مفقود'}`);
+    console.log(`📋 SUPABASE KEY: ${SUPABASE_KEY ? '✅ موجود' : '❌ مفقود'}`);
     console.log(`============================================\n`);
 
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);

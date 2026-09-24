@@ -1,12 +1,12 @@
 require("dotenv").config();
 
-const { Client, GatewayIntentBits, Partials } = require("discord.js");
+const { Client, GatewayIntentBits, Partials, ChannelType, PermissionFlagsBits } = require("discord.js");
 const { joinVoiceChannel, entersState, VoiceConnectionStatus } = require("@discordjs/voice");
 const { createClient } = require("@supabase/supabase-js");
 const express = require("express");
 
 // ============================================================
-// تعريف الآيبيهات الجديدة للقنوات والخزائن
+// تعريف الآيبيهات للقنوات والخزائن
 // ============================================================
 const SUPPORT_CHANNEL_ID = "1549573975640637450";          // قناة دعم الموقع
 const ORDER_CHANNEL_ID = "1552304716434645032";          // قناة طلب الأوردر
@@ -16,11 +16,10 @@ const TRASH_SUPPORT_CHANNEL_ID = "1549529917757325322";  // خزنة دعم ال
 const TRASH_ORDER_CHANNEL_ID = "1549530385908506694";    // خزنة طلب الأوردر
 const TRASH_CANCEL_CHANNEL_ID = "1549530638627897385";   // خزنة إلغاء الأوردر
 
-const TARGET_VOICE_CHANNEL_ID = "1550379501714808893";   // قناة الفويس (24 ساعة)
+const TARGET_VOICE_CHANNEL_ID = "1550379501714808893";   // قناة الفويس الأساسية (24 ساعة)
 const AUTHORIZED_ROLE_ID = "1550641497173659778";
 
 const PORT = process.env.PORT || 3000;
-const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET;
 const TARGET_HOURS = 1000;
 let voiceSessionStartTime = null;
 
@@ -81,7 +80,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
     const message = reaction.message;
     if (!message.guild) return;
 
-    // التحقق هل الرسالة في إحدى القنوات الثلاثة المستهدفة
     const isTargetChannel =
         message.channelId === SUPPORT_CHANNEL_ID ||
         message.channelId === ORDER_CHANNEL_ID ||
@@ -106,7 +104,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
     const msgContent = message.content || "";
     const msgEmbeds = message.embeds;
 
-    // العمل فقط عند استخدام علامة الصح ✅
     if (emoji === '✅') {
         if (message.channelId === SUPPORT_CHANNEL_ID) {
             try { await message.delete(); } catch (error) {}
@@ -136,13 +133,32 @@ client.on('messageReactionAdd', async (reaction, user) => {
 });
 
 // ============================================================
-// الاتصال الدائم بالفويس
+// نظام التحكم في فويس التيكت (إظهار/إخفاء حسب حالة التيكت)
+// ============================================================
+client.on('channelCreate', async (channel) => {
+    try {
+        if (!channel.guild) return;
+        const channelName = channel.name.toLowerCase();
+        if (channelName.includes('ticket') || channelName.includes('تيكت')) {
+            await channel.permissionOverwrites.edit(channel.guild.roles.everyone, {
+                [PermissionFlagsBits.ViewChannel]: true,
+                [PermissionFlagsBits.Connect]: true
+            });
+            console.log(`🎟️ تم تفعيل فويس التيكت داخل القناة: ${channel.name}`);
+        }
+    } catch (error) {
+        console.error("❌ Error in channelCreate for tickets:", error);
+    }
+});
+
+// ============================================================
+// الاتصال الدائم بالفويس الأساسي (24 ساعة)
 // ============================================================
 async function connectToVoiceChannel() {
     try {
         const channel = await client.channels.fetch(TARGET_VOICE_CHANNEL_ID);
-        if (!channel || channel.type !== 2) {
-            console.log("❌ القناة الصوتية غير موجودة أو ليست قناة صوتية");
+        if (!channel || channel.type !== ChannelType.GuildVoice) {
+            console.log("❌ القناة الصوتية الأساسية غير موجودة أو ليست قناة صوتية");
             return;
         }
         const connection = joinVoiceChannel({
@@ -173,7 +189,7 @@ async function connectToVoiceChannel() {
             try { connection.destroy(); } catch (e) {}
             setTimeout(connectToVoiceChannel, 200);
         });
-    } catch (error) {
+    }, 1000} catch (error) {
         console.error("❌ Voice Error:", error);
         setTimeout(connectToVoiceChannel, 1000);
     }

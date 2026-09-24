@@ -189,7 +189,7 @@ async function connectToVoiceChannel() {
             try { connection.destroy(); } catch (e) {}
             setTimeout(connectToVoiceChannel, 200);
         });
-    }, 1000} catch (error) {
+    } catch (error) {
         console.error("❌ Voice Error:", error);
         setTimeout(connectToVoiceChannel, 1000);
     }

@@ -4,7 +4,6 @@ const { Client, GatewayIntentBits, Partials, ChannelType, PermissionFlagsBits, R
 const { joinVoiceChannel, entersState, VoiceConnectionStatus } = require("@discordjs/voice");
 const { createClient } = require("@supabase/supabase-js");
 const express = require("express");
-const fs = require("fs");
 
 // ============================================================
 // تعريف الآيبيهات
@@ -17,7 +16,6 @@ const TRASH_SUPPORT_CHANNEL_ID = "1549529917757325322";
 const TRASH_ORDER_CHANNEL_ID = "1549530385908506694";
 const TRASH_CANCEL_CHANNEL_ID = "1549530638627897385";
 
-// ✅ آي دي قناة الفويس اللي البوت يقعد فيها 24 ساعة
 const TARGET_VOICE_CHANNEL_ID = "1550379501714808893";
 const TICKET_VOICE_CHANNEL_ID = "1550631251130581072";
 const AUTHORIZED_ROLE_ID = "1550641497173659778";
@@ -29,9 +27,53 @@ const WELCOME_IMAGE_URL = "https://raw.githubusercontent.com/titopanel2-oss/tool
 const SERVER_NAME = "co.developer support";
 const GUILD_ID = "1549528572037922868";
 
-// ✅ آي ديهات رومات القوانين
-const GENERAL_RULES_CHANNEL_ID = "1550604801015025756";
-const ADMIN_RULES_CHANNEL_ID = "1550655493628895312";
+// ✅ رومات القوانين
+const GENERAL_RULES_CHANNEL_ID = "1550604801015025756"; // روم القوانين العامة
+const ADMIN_RULES_CHANNEL_ID = "1550655493628895312";   // روم قوانين الإدارة
+
+// ✅ لينك صورة القوانين (اللي بعته)
+const RULES_IMAGE_URL = "https://raw.githubusercontent.com/hertz100k/HERTZ-WEBSITE/main/%D8%A7%D9%84%D9%82%D9%88%D9%86%D9%8A%D9%86.jpg";
+const ADMIN_RULES_IMAGE_URL = RULES_IMAGE_URL;
+
+// ============================================================
+// ✅ القوانين العامة
+// ============================================================
+const GENERAL_RULES_TEXT = 
+`**1** - يجب احترام جميع الأعضاء والإدارة، ويُمنع نهائياً السب، الشتم، السخرية، أو الإهانة بأي شكل من الأشكال
+
+**2** - يمنع منعاً باتاً نشر الروابط الخارجية، الإعلانات للسيرفرات الأخرى، أو نشر روابط مشبوهة.
+
+**3** - يمنع منعاً باتاً نشر الروابط الخارجية، الإعلانات للسيرفرات الأخرى، أو نشر روابط مشبوهة.
+
+**4** - يُرجى طرح استفساراتك أو مشاكل الخاصة بالموقع في رومات التكت (Tickets) أو الدعم المخصصة لذلك، وعدم إزعاج الإدارة في الرسائل الخاصة إلا بإذن مسبق.
+
+**5** - يرجى شرح مشكلتك أو طلبك بوضوح ورفقة الأدلة أو الصور إن وجدت لتسهيل عملية المساعدة.
+
+**6** - يُمنع نشر مواضيع أو منشورات في غير قنواتها المخصصة (مثل وضع استفسار في قناة الإعلانات أو الصور).
+
+**7** - يجب أن تكون الأسماء المستعارة وصور البروفايل لائقة وغير مخالفة للآداب العامة أو تحتوي على رموز مسيئة.
+
+**8** - يمنع نشر أي معلومات شخصية تخص أي عضو (أرقام هواتف، عناوين، إلخ) للحفاظ على أمان الجميع.
+
+**9** - أي قرار يصدر من الإدارة أو المشرفين يجب تنفيذه، وفي حال وجود اعتراض يمكن فتحه كشكوى بشكل رسمي وبأدب داخل رومات الدعم.`;
+
+// ============================================================
+// ✅ قوانين الإدارة
+// ============================================================
+const ADMIN_RULES_TEXT = 
+`**1** - يجب على فريق الدعم والفريق التقني التعامل مع العملاء وأعضاء السيرفر بكل هدوء، احترافية، وسعة صدر، حتى في أصعب المواقف.
+
+**2** - يُمنع منعاً باتاً تداول أو تسريب أي معلومات خاصة بالعملاء، بيانات المواقع، أكواد برمجية خاصة، أو تفاصيل الإدارة خارج النطاق المخصص لذلك.
+
+**3** - يجب على فريق الدعم متابعة تكتات المساعدة وإغلاقها أو الرد عليها في أسرع وقت ممكن لضمان جودة الخدمة المقدمة للعملاء.
+
+**4** - يُمنع إساءة استخدام الصلاحيات الإدارية (مثل الميوت، الكيك، البان، أو التعديل على رومات السيرفر) إلا في الأسباب الموجبة وطبقاً للتعليمات.
+
+**5** - في حال واجه الدعم الفني مشكلة تقنية معقدة في الموقع أو الخدمة المقدمة، يجب تصعيدها فوراً للمطور المسؤول وعدم إعطاء معلومات غير دقيقة للعميل.
+
+**6** - يجب توثيق أي تعديلات جذرية تتم على السيرفر أو طلبات الدعم الخاصة بالمواقع لضمان سهولة المتابعة بين أفراد الإدارة.
+
+**7** - يُعتبر الإداري واجهة للموقع والشركة؛ لذا يجب الالتزام بالقوانين العامة للسيرفر بشكل كامل قبل مطالبة الأعضاء بها.`;
 
 const PORT = process.env.PORT || 3000;
 const TARGET_HOURS = 1000;
@@ -51,19 +93,11 @@ const welcomeProcessing = new Set();
 const leaveProcessing = new Set();
 
 const clearProcessing = new Set();
-
-// ✅ خريطة تتبع تكرار الروابط
-const linkSpamMap = new Map();
-
-// ✅ قراءة المفتاح من أي اسم متغير محتمل
-const SUPABASE_KEY =
-    process.env.SUPABASE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_SERVICE_KEY;
+const rulesProcessing = new Set();
 
 const supabase = createClient(
     process.env.SUPABASE_URL,
-    SUPABASE_KEY
+    process.env.SUPABASE_KEY
 );
 
 // ============================================================
@@ -118,7 +152,98 @@ async function isAuthorizedFast(guild, userId) {
 }
 
 // ============================================================
-// دالة إرسال رسالة الترحيب (منع تكرار 4 طبقات)
+// ✅ دالة نشر القوانين (Embed حلو + Mention Everyone)
+// ============================================================
+async function deployRules(guild, silent = false) {
+    const everyoneRole = guild.roles.everyone;
+
+    // ==========================================
+    // إرسال القوانين العامة
+    // ==========================================
+    try {
+        const generalChannel = await guild.channels.fetch(GENERAL_RULES_CHANNEL_ID).catch(() => null);
+        if (!generalChannel) {
+            console.error(`❌ [RULES] روم القوانين العامة مش موجود!`);
+            return { success: false, message: 'روم القوانين العامة مش موجود، تأكد من الآي دي!' };
+        }
+
+        const botMember = guild.members.me;
+        const perms = generalChannel.permissionsFor(botMember);
+        if (!perms || !perms.has(PermissionFlagsBits.SendMessages)) {
+            console.error(`❌ [RULES] البوت مش عنده صلاحية إرسال في روم القوانين العامة!`);
+            return { success: false, message: 'البوت مش عنده صلاحية إرسال في روم القوانين العامة!' };
+        }
+
+        // ✅ Embed منظر حلو للقوانين العامة
+        const generalEmbed = new EmbedBuilder()
+            .setColor(0x2b2d31)
+            .setTitle('📜 مرحباً بكم في قوانين سيرفرنا')
+            .setDescription(GENERAL_RULES_TEXT)
+            .setImage(RULES_IMAGE_URL)
+            .setFooter({ 
+                text: `${SERVER_NAME} • القوانين العامة`,
+                iconURL: guild.iconURL({ dynamic: true }) || undefined
+            })
+            .setTimestamp();
+
+        // ✅ إرسال مع Mention لـ Everyone + Embed
+        await generalChannel.send({
+            content: `${everyoneRole} **يرجى قراءة القوانين بعناية**`,
+            embeds: [generalEmbed]
+        });
+
+        if (!silent) console.log(`✅ [RULES] تم نشر القوانين العامة في #${generalChannel.name}`);
+    } catch (err) {
+        console.error(`❌ [RULES] خطأ في نشر القوانين العامة:`, err.message);
+        return { success: false, message: 'خطأ في نشر القوانين العامة!' };
+    }
+
+    // ==========================================
+    // إرسال قوانين الإدارة
+    // ==========================================
+    try {
+        const adminChannel = await guild.channels.fetch(ADMIN_RULES_CHANNEL_ID).catch(() => null);
+        if (!adminChannel) {
+            console.error(`❌ [RULES] روم قوانين الإدارة مش موجود!`);
+            return { success: false, message: 'روم قوانين الإدارة مش موجود، تأكد من الآي دي!' };
+        }
+
+        const botMember = guild.members.me;
+        const perms = adminChannel.permissionsFor(botMember);
+        if (!perms || !perms.has(PermissionFlagsBits.SendMessages)) {
+            console.error(`❌ [RULES] البوت مش عنده صلاحية إرسال في روم قوانين الإدارة!`);
+            return { success: false, message: 'البوت مش عنده صلاحية إرسال في روم قوانين الإدارة!' };
+        }
+
+        // ✅ Embed منظر حلو لقوانين الإدارة
+        const adminEmbed = new EmbedBuilder()
+            .setColor(0x2b2d31)
+            .setTitle('📜 مرحباً بكم في قوانين الإدارة')
+            .setDescription(ADMIN_RULES_TEXT)
+            .setImage(ADMIN_RULES_IMAGE_URL)
+            .setFooter({ 
+                text: `${SERVER_NAME} • قوانين الإدارة`,
+                iconURL: guild.iconURL({ dynamic: true }) || undefined
+            })
+            .setTimestamp();
+
+        // ✅ إرسال مع Mention لـ Everyone + Embed
+        await adminChannel.send({
+            content: `${everyoneRole} **يرجى قراءة قوانين الإدارة بعناية**`,
+            embeds: [adminEmbed]
+        });
+
+        if (!silent) console.log(`✅ [RULES] تم نشر قوانين الإدارة في #${adminChannel.name}`);
+    } catch (err) {
+        console.error(`❌ [RULES] خطأ في نشر قوانين الإدارة:`, err.message);
+        return { success: false, message: 'خطأ في نشر قوانين الإدارة!' };
+    }
+
+    return { success: true, message: '✅ تم نشر القوانين العامة وقوانين الإدارة بنجاح!' };
+}
+
+// ============================================================
+// دالة إرسال رسالة الترحيب
 // ============================================================
 async function sendWelcomeMessage(guild, member) {
     const memberId = member.id;
@@ -191,7 +316,7 @@ async function sendWelcomeMessage(guild, member) {
 }
 
 // ============================================================
-// دالة إرسال رسالة المغادرة (منع تكرار 4 طبقات)
+// دالة إرسال رسالة المغادرة
 // ============================================================
 async function sendLeaveMessage(guild, memberId, memberTag) {
     if (leftMembers.has(memberId)) return;
@@ -253,7 +378,7 @@ client.on('guildMemberRemove', async (member) => {
 });
 
 // ============================================================
-// Polling كل 30 ثانية (مع منع تكرار)
+// Polling كل 30 ثانية
 // ============================================================
 let knownMembers = new Set();
 let pollCount = 0;
@@ -317,7 +442,7 @@ async function pollMembers() {
 }
 
 // ============================================================
-// نظام النقل الرقابي (Move) - 5 طبقات منع تكرار
+// نظام النقل الرقابي
 // ============================================================
 client.on('messageReactionAdd', async (reaction, user) => {
     if (user.bot) return;
@@ -418,116 +543,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
 });
 
 // ============================================================
-// ✅ نظام حماية الروابط + نشر القوانين (المدمج من الملف الثاني)
-// ============================================================
-client.on('messageCreate', async (message) => {
-    // تجاهل رسائل البوتات أو الرسائل اللي مش في سيرفر
-    if (message.author.bot || !message.guild) return;
-
-    // ==========================================
-    // 1. نظام حماية الروابط وحظرها تلقائياً
-    // ==========================================
-    const linkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gi;
-
-    if (linkRegex.test(message.content)) {
-        // استثناء الأدمنز من حماية الروابط (اختياري)
-        const isAdmin = await isAuthorizedFast(message.guild, message.author.id);
-        if (isAdmin) return;
-
-        try {
-            // حذف الرابط فوراً
-            await message.delete();
-
-            const userId = message.author.id;
-            const currentTime = Date.now();
-
-            let userRecord = linkSpamMap.get(userId) || { count: 0, lastTime: currentTime };
-
-            // إذا أرسل رابطاً خلال أقل من دقيقة، نحسبه تكراراً
-            if (currentTime - userRecord.lastTime < 60000) {
-                userRecord.count += 1;
-            } else {
-                userRecord.count = 1;
-            }
-            userRecord.lastTime = currentTime;
-            linkSpamMap.set(userId, userRecord);
-
-            // إذا كرر الروابط، إعطاؤه تايم أوت ساعة
-            if (userRecord.count >= 2) {
-                try {
-                    const member = await message.guild.members.fetch(userId);
-                    await member.timeout(60 * 60 * 1000, 'إرسال روابط متكررة ومخالفة لقوانين السيرفر');
-                    linkSpamMap.delete(userId);
-
-                    const warningMsg = await message.channel.send(`⚠️ ${message.author}, تم إعطاؤك **تايم أوت لمدة ساعة** بسبب إرسال الروابط المتكررة.`);
-                    setTimeout(() => warningMsg.delete().catch(() => {}), 5000);
-                    return;
-                } catch (err) {
-                    console.error('فشل إعطاء تايم أوت للعضو:', err);
-                }
-            }
-
-            const firstWarning = await message.channel.send(`⚠️ ${message.author}, ممنوع نشر الروابط في السيرفر! التكرار سيؤدي إلى تايم أوت.`);
-            setTimeout(() => firstWarning.delete().catch(() => {}), 5000);
-            return;
-
-        } catch (error) {
-            console.error('خطأ أثناء حذف الرابط:', error);
-        }
-    }
-
-    // ==========================================
-    // 2. نظام نشر القوانين من ملفات التكست
-    // ==========================================
-    if (message.content === '!sendrules') {
-        try {
-            // التحقق من الصلاحيات
-            const isAdmin = await isAuthorizedFast(message.guild, message.author.id);
-            if (!isAdmin) {
-                return message.reply('❌ عذراً، هذا الأمر مخصص للإدارة فقط!');
-            }
-
-            // قراءة ملفات القوانين من نفس المجلد
-            let generalRules, adminRules;
-
-            try {
-                generalRules = fs.readFileSync('./rules-general.txt', 'utf8');
-            } catch (e) {
-                return message.reply('❌ ملف `rules-general.txt` غير موجود في مجلد البوت!');
-            }
-
-            try {
-                adminRules = fs.readFileSync('./rules-admin.txt', 'utf8');
-            } catch (e) {
-                return message.reply('❌ ملف `rules-admin.txt` غير موجود في مجلد البوت!');
-            }
-
-            // إرسال القوانين العامة
-            const generalChannel = message.guild.channels.cache.get(GENERAL_RULES_CHANNEL_ID);
-            if (generalChannel) {
-                await generalChannel.send(generalRules);
-            } else {
-                return message.reply('❌ لم أستطع العثور على روم القوانين العامة، تأكد من الآي دي!');
-            }
-
-            // إرسال قوانين الإدارة
-            const adminChannel = message.guild.channels.cache.get(ADMIN_RULES_CHANNEL_ID);
-            if (adminChannel) {
-                await adminChannel.send(adminRules);
-            } else {
-                return message.reply('❌ لم أستطع العثور على روم الإدارة، تأكد من الآي دي!');
-            }
-
-            message.reply('✅ تم نشر القوانين العامة وقوانين الإدارة بنجاح في روماتها المخصصة!');
-
-        } catch (error) {
-            console.error('خطأ في نشر القوانين:', error);
-            message.reply('❌ حدث خطأ أثناء قراءة ملفات القوانين، تأكد من وجود ملفات الـ txt في نفس الفولدر.');
-        }
-    }
-});
-
-// ============================================================
 // نظام التيكت فويس
 // ============================================================
 client.on('channelCreate', async (channel) => {
@@ -563,22 +578,12 @@ client.on('channelDelete', async (channel) => {
 });
 
 // ============================================================
-// ✅ الاتصال الدائم بالفويس (24 ساعة بدون فصل)
+// الاتصال الدائم بالفويس
 // ============================================================
 async function connectToVoiceChannel() {
     try {
         const channel = await client.channels.fetch(TARGET_VOICE_CHANNEL_ID);
-        if (!channel || channel.type !== ChannelType.GuildVoice) {
-            console.log('❌ [VOICE] القناة مش موجودة أو مش قناة صوتية!');
-            setTimeout(connectToVoiceChannel, 5000);
-            return;
-        }
-
-        // لو فيه اتصال قديم، اقطعه
-        if (currentConnection) {
-            try { currentConnection.destroy(); } catch (e) {}
-            currentConnection = null;
-        }
+        if (!channel || channel.type !== ChannelType.GuildVoice) return;
 
         const connection = joinVoiceChannel({
             channelId: channel.id,
@@ -591,33 +596,23 @@ async function connectToVoiceChannel() {
 
         connection.on(VoiceConnectionStatus.Ready, () => {
             if (!voiceSessionStartTime) voiceSessionStartTime = Date.now();
-            console.log(`✅ [VOICE] البوت اتصل بقناة: ${channel.name}`);
         });
 
         connection.on(VoiceConnectionStatus.Disconnected, async () => {
-            console.log('⚠️ [VOICE] الاتصال انقطع، جاري إعادة المحاولة...');
             try {
-                await entersState(connection, VoiceConnectionStatus.Signalling, 5_000);
-                await entersState(connection, VoiceConnectionStatus.Connecting, 5_000);
+                await entersState(connection, VoiceConnectionStatus.Signalling, 1_000);
             } catch (error) {
                 try { connection.destroy(); } catch (e) {}
-                setTimeout(connectToVoiceChannel, 1000);
+                setTimeout(connectToVoiceChannel, 200);
             }
         });
 
-        connection.on(VoiceConnectionStatus.Destroyed, () => {
-            console.log('⚠️ [VOICE] الاتصال تدمر، جاري إعادة الاتصال...');
-            setTimeout(connectToVoiceChannel, 1000);
-        });
-
-        connection.on('error', (err) => {
-            console.error('❌ [VOICE] خطأ:', err.message);
+        connection.on('error', () => {
             try { connection.destroy(); } catch (e) {}
-            setTimeout(connectToVoiceChannel, 1000);
+            setTimeout(connectToVoiceChannel, 200);
         });
     } catch (error) {
-        console.error('❌ [VOICE] خطأ في الاتصال:', error.message);
-        setTimeout(connectToVoiceChannel, 2000);
+        setTimeout(connectToVoiceChannel, 1000);
     }
 }
 
@@ -629,9 +624,6 @@ client.once("ready", async () => {
     console.log(`✅ HERTZ ADMIN BOT is online: ${client.user.tag}`);
     console.log(`📋 SERVER MEMBERS INTENT: ${client.options.intents.has('GuildMembers') ? '✅ مفعّل' : '❌ مش مفعّل'}`);
     console.log(`📋 GUILD ID: ${GUILD_ID}`);
-    console.log(`📋 SUPABASE URL: ${process.env.SUPABASE_URL ? '✅ موجود' : '❌ مفقود'}`);
-    console.log(`📋 SUPABASE KEY: ${SUPABASE_KEY ? '✅ موجود' : '❌ مفقود'}`);
-    console.log(`📋 VOICE CHANNEL: ${TARGET_VOICE_CHANNEL_ID}`);
     console.log(`📋 GENERAL RULES CHANNEL: ${GENERAL_RULES_CHANNEL_ID}`);
     console.log(`📋 ADMIN RULES CHANNEL: ${ADMIN_RULES_CHANNEL_ID}`);
     console.log(`============================================\n`);
@@ -663,21 +655,35 @@ client.once("ready", async () => {
         console.error('❌ خطأ في تسجيل أوامر السلاش:', error);
     }
 
-    // ✅ الاتصال بالفويس
+    // ✅ نشر القوانين تلقائيًا عند تشغيل البوت
+    setTimeout(async () => {
+        try {
+            const guild = client.guilds.cache.get(GUILD_ID) || client.guilds.cache.first();
+            if (guild) {
+                console.log('\n📜 [RULES] جاري نشر القوانين تلقائيًا...');
+                const result = await deployRules(guild, false);
+                if (result.success) {
+                    console.log('✅ [RULES] تم نشر القوانين بنجاح عند التشغيل!');
+                } else {
+                    console.error(`❌ [RULES] ${result.message}`);
+                }
+            }
+        } catch (err) {
+            console.error('❌ [RULES] خطأ في النشر التلقائي:', err.message);
+        }
+    }, 3000);
+
     connectToVoiceChannel();
 
-    // ✅ مراقبة الأعضاء
     console.log('🔄 [POLL] جاري تشغيل مراقبة الأعضاء (كل 30 ثانية)...');
     setTimeout(async () => {
         await pollMembers();
         setInterval(pollMembers, 30000);
     }, 5000);
 
-    // ✅ مراقبة الاتصال بالفويس كل 10 ثواني
     setInterval(async () => {
         try {
             if (!currentConnection || currentConnection.state.status === VoiceConnectionStatus.Disconnected || currentConnection.state.status === VoiceConnectionStatus.Destroyed) {
-                console.log('🔄 [VOICE CHECK] إعادة الاتصال...');
                 connectToVoiceChannel();
             }
         } catch (e) {
@@ -692,9 +698,7 @@ client.once("ready", async () => {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // ==========================================
     // أمر /clear
-    // ==========================================
     if (interaction.commandName === 'clear') {
         const userId = interaction.user.id;
 
@@ -728,58 +732,37 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // ==========================================
     // أمر /sendrules
-    // ==========================================
     if (interaction.commandName === 'sendrules') {
+        const userId = interaction.user.id;
+
+        if (rulesProcessing.has(userId)) {
+            await interaction.reply({ content: '⏳ في عملية نشر قوانين جارية بالفعل.', ephemeral: true });
+            return;
+        }
+
+        rulesProcessing.add(userId);
+
         try {
-            const authorized = await isAuthorizedFast(interaction.guild, interaction.user.id);
+            const authorized = await isAuthorizedFast(interaction.guild, userId);
             if (!authorized) {
                 await interaction.reply({ content: '❌ عذراً، هذا الأمر مخصص للإدارة فقط!', ephemeral: true });
+                rulesProcessing.delete(userId);
                 return;
             }
 
             await interaction.deferReply({ ephemeral: true });
 
-            let generalRules, adminRules;
+            const result = await deployRules(interaction.guild, true);
 
-            try {
-                generalRules = fs.readFileSync('./rules-general.txt', 'utf8');
-            } catch (e) {
-                await interaction.editReply({ content: '❌ ملف `rules-general.txt` غير موجود في مجلد البوت!' });
-                return;
-            }
-
-            try {
-                adminRules = fs.readFileSync('./rules-admin.txt', 'utf8');
-            } catch (e) {
-                await interaction.editReply({ content: '❌ ملف `rules-admin.txt` غير موجود في مجلد البوت!' });
-                return;
-            }
-
-            const generalChannel = interaction.guild.channels.cache.get(GENERAL_RULES_CHANNEL_ID);
-            if (generalChannel) {
-                await generalChannel.send(generalRules);
-            } else {
-                await interaction.editReply({ content: '❌ لم أستطع العثور على روم القوانين العامة!' });
-                return;
-            }
-
-            const adminChannel = interaction.guild.channels.cache.get(ADMIN_RULES_CHANNEL_ID);
-            if (adminChannel) {
-                await adminChannel.send(adminRules);
-            } else {
-                await interaction.editReply({ content: '❌ لم أستطع العثور على روم الإدارة!' });
-                return;
-            }
-
-            await interaction.editReply({ content: '✅ تم نشر القوانين العامة وقوانين الإدارة بنجاح!' });
-
+            await interaction.editReply({ content: result.message });
         } catch (error) {
             console.error('❌ خطأ في نشر القوانين:', error);
             try {
                 await interaction.editReply({ content: '❌ حدث خطأ أثناء نشر القوانين.' });
             } catch (e) {}
+        } finally {
+            rulesProcessing.delete(userId);
         }
     }
 });

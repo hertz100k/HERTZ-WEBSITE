@@ -49,6 +49,10 @@ const leftMembers = new Set();
 const welcomeProcessing = new Set();
 const leaveProcessing = new Set();
 
+// ✅ أقفال على مستوى الحدث
+const welcomeEventLock = new Set();
+const leaveEventLock = new Set();
+
 const clearProcessing = new Set();
 
 // ✅ خريطة تتبع تكرار الروابط
@@ -117,70 +121,45 @@ async function isAuthorizedFast(guild, userId) {
 }
 
 // ============================================================
-// دالة إرسال رسالة الترحيب (منع تكرار 4 طبقات)
+// 🔥 دالة الترحيب — رسالة واحدة فقط (قفل صارم)
 // ============================================================
 async function sendWelcomeMessage(guild, member) {
     const memberId = member.id;
 
-    if (welcomedMembers.has(memberId)) return;
-    if (welcomeProcessing.has(memberId)) return;
     if (member.user.bot) return;
 
+    // 🛡️ فحص مزدوج
+    if (welcomedMembers.has(memberId)) return;
+    if (welcomeProcessing.has(memberId)) return;
+
+    // ✅ قفل فوري قبل أي await
     welcomeProcessing.add(memberId);
     welcomedMembers.add(memberId);
     leftMembers.delete(memberId);
 
     try {
-        console.log(`\n🎉 [WELCOME START] بدء الترحيب بـ ${member.user.tag}`);
+        console.log(`\n🎉 [WELCOME] ${member.user.tag}`);
 
         try {
             const role = guild.roles.cache.get(AUTO_ROLE_ID);
-            if (role) {
-                await member.roles.add(role, 'رول تلقائي للأعضاء الجدد');
-                console.log(`✅ [AUTO ROLE] تم إعطاء الرول`);
-            }
+            if (role) await member.roles.add(role, 'رول تلقائي');
         } catch (roleError) {
             console.error(`❌ [AUTO ROLE] فشل:`, roleError.message);
         }
 
         const welcomeChannel = await guild.channels.fetch(WELCOME_CHANNEL_ID).catch(() => null);
-        if (!welcomeChannel) {
-            console.error(`❌ [WELCOME] قناة الترحيب مش موجودة!`);
-            welcomedMembers.delete(memberId);
-            return;
-        }
-
-        const botMember = guild.members.me;
-        if (!botMember) {
-            welcomedMembers.delete(memberId);
-            return;
-        }
-
-        const permissions = welcomeChannel.permissionsFor(botMember);
-        if (!permissions ||
-            !permissions.has(PermissionFlagsBits.ViewChannel) ||
-            !permissions.has(PermissionFlagsBits.SendMessages) ||
-            !permissions.has(PermissionFlagsBits.EmbedLinks)) {
-            console.error(`❌ [WELCOME] البوت مش عنده الصلاحيات الكافية!`);
-            welcomedMembers.delete(memberId);
-            return;
-        }
-
-        const memberMention = `<@${memberId}>`;
+        if (!welcomeChannel) return;
 
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setTitle(`مرحباً بك في السيرفر`)
-            .setDescription(
-                `أهلاً بك يا ${memberMention} في سيرفر **${SERVER_NAME}**`
-            )
+            .setDescription(`أهلاً بك يا <@${memberId}> في سيرفر **${SERVER_NAME}**`)
             .setImage(WELCOME_IMAGE_URL)
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
             .setTimestamp();
 
         await welcomeChannel.send({ embeds: [embed] });
-
-        console.log(`✅ [WELCOME SUCCESS] تم الترحيب بـ ${member.user.tag}\n`);
+        console.log(`✅ [WELCOME] تم الترحيب بـ ${member.user.tag}\n`);
     } catch (error) {
         console.error(`❌ [WELCOME ERROR]:`, error);
         welcomedMembers.delete(memberId);
@@ -190,46 +169,25 @@ async function sendWelcomeMessage(guild, member) {
 }
 
 // ============================================================
-// دالة إرسال رسالة المغادرة (منع تكرار 4 طبقات)
+// 🔥 دالة المغادرة — رسالة واحدة فقط (قفل صارم)
 // ============================================================
 async function sendLeaveMessage(guild, memberId, memberTag) {
     if (leftMembers.has(memberId)) return;
     if (leaveProcessing.has(memberId)) return;
 
+    // ✅ قفل فوري قبل أي await
     leaveProcessing.add(memberId);
     leftMembers.add(memberId);
     welcomedMembers.delete(memberId);
 
     try {
-        console.log(`\n🚪 [LEAVE START] بدء المغادرة لـ ${memberTag}`);
+        console.log(`\n🚪 [LEAVE] ${memberTag}`);
 
         const leaveChannel = await guild.channels.fetch(LEAVE_CHANNEL_ID).catch(() => null);
-        if (!leaveChannel) {
-            leftMembers.delete(memberId);
-            return;
-        }
+        if (!leaveChannel) return;
 
-        const botMember = guild.members.me;
-        if (!botMember) {
-            leftMembers.delete(memberId);
-            return;
-        }
-
-        const permissions = leaveChannel.permissionsFor(botMember);
-        if (!permissions ||
-            !permissions.has(PermissionFlagsBits.ViewChannel) ||
-            !permissions.has(PermissionFlagsBits.SendMessages)) {
-            leftMembers.delete(memberId);
-            return;
-        }
-
-        const memberMention = `<@${memberId}>`;
-
-        await leaveChannel.send({
-            content: `**غادر** ${memberMention}`
-        });
-
-        console.log(`✅ [LEAVE SUCCESS] تم تسجيل مغادرة ${memberTag}\n`);
+        await leaveChannel.send({ content: `**غادر** <@${memberId}>` });
+        console.log(`✅ [LEAVE] تم تسجيل مغادرة ${memberTag}\n`);
     } catch (error) {
         console.error(`❌ [LEAVE ERROR]:`, error);
         leftMembers.delete(memberId);
@@ -239,15 +197,31 @@ async function sendLeaveMessage(guild, memberId, memberTag) {
 }
 
 // ============================================================
-// الأحداث الأساسية
+// 🔥 الأحداث — قفل على مستوى الحدث نفسه
 // ============================================================
 client.on('guildMemberAdd', async (member) => {
     console.log(`\n🔔 [EVENT] guildMemberAdd: ${member.user.tag}`);
+
+    // ✅ قفل الحدث — لو اتنادى قبل كده، ارجع فورًا
+    if (welcomeEventLock.has(member.id)) {
+        console.log(`⏭️ [EVENT-SKIP] ${member.user.tag} (الحدث مكرر)`);
+        return;
+    }
+    welcomeEventLock.add(member.id);
+
     await sendWelcomeMessage(member.guild, member);
 });
 
 client.on('guildMemberRemove', async (member) => {
     console.log(`\n🔔 [EVENT] guildMemberRemove: ${member.user.tag}`);
+
+    // ✅ قفل الحدث — لو اتنادى قبل كده، ارجع فورًا
+    if (leaveEventLock.has(member.id)) {
+        console.log(`⏭️ [EVENT-SKIP] ${member.user.tag} (الحدث مكرر)`);
+        return;
+    }
+    leaveEventLock.add(member.id);
+
     await sendLeaveMessage(member.guild, member.id, member.user.tag);
 });
 
@@ -287,8 +261,10 @@ async function pollMembers() {
                 if (member.user.bot) continue;
                 if (welcomedMembers.has(id)) continue;
                 if (welcomeProcessing.has(id)) continue;
+                if (welcomeEventLock.has(id)) continue;
 
                 console.log(`\n🆕 [POLL] عضو جديد دخل: ${member.user.tag}`);
+                welcomeEventLock.add(id);
                 await sendWelcomeMessage(guild, member);
             }
         }
@@ -298,11 +274,13 @@ async function pollMembers() {
                 knownMembers.delete(id);
                 if (leftMembers.has(id)) continue;
                 if (leaveProcessing.has(id)) continue;
+                if (leaveEventLock.has(id)) continue;
 
                 try {
                     const user = await client.users.fetch(id).catch(() => null);
                     if (user && !user.bot) {
                         console.log(`\n🚪 [POLL] عضو خرج: ${user.tag}`);
+                        leaveEventLock.add(id);
                         await sendLeaveMessage(guild, id, user.tag);
                     }
                 } catch (e) {}

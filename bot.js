@@ -2,7 +2,6 @@ require("dotenv").config();
 
 const { Client, GatewayIntentBits, Partials, ChannelType, PermissionFlagsBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { joinVoiceChannel, entersState, VoiceConnectionStatus } = require("@discordjs/voice");
-const { createClient } = require("@supabase/supabase-js");
 const express = require("express");
 
 // ============================================================
@@ -28,10 +27,10 @@ const SERVER_NAME = "co.developer support";
 const GUILD_ID = "1549528572037922868";
 
 // ✅ رومات القوانين
-const GENERAL_RULES_CHANNEL_ID = "1550604801015025756"; // روم القوانين العامة
-const ADMIN_RULES_CHANNEL_ID = "1550655493628895312";   // روم قوانين الإدارة
+const GENERAL_RULES_CHANNEL_ID = "1550604801015025756";
+const ADMIN_RULES_CHANNEL_ID = "1550655493628895312";
 
-// ✅ لينك صورة القوانين (اللي بعته)
+// ✅ صورة القوانين
 const RULES_IMAGE_URL = "https://raw.githubusercontent.com/hertz100k/HERTZ-WEBSITE/main/%D8%A7%D9%84%D9%82%D9%88%D9%86%D9%8A%D9%86.jpg";
 const ADMIN_RULES_IMAGE_URL = RULES_IMAGE_URL;
 
@@ -95,10 +94,13 @@ const leaveProcessing = new Set();
 const clearProcessing = new Set();
 const rulesProcessing = new Set();
 
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
-);
+// ============================================================
+// ✅ Supabase اختياري (لو المفاتيح مش موجودة، البوت يشتغل عادي)
+// ============================================================
+console.log('\n🔍 [ENV CHECK] فحص متغيرات البيئة:');
+console.log('   DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? '✅ موجود' : '❌ مفقود');
+console.log('   SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ موجود' : '⚠️ مفقود (اختياري)');
+console.log('   SUPABASE_KEY:', process.env.SUPABASE_KEY ? '✅ موجود' : '⚠️ مفقود (اختياري)');
 
 // ============================================================
 // Discord Client
@@ -152,14 +154,12 @@ async function isAuthorizedFast(guild, userId) {
 }
 
 // ============================================================
-// ✅ دالة نشر القوانين (Embed حلو + Mention Everyone)
+// ✅ دالة نشر القوانين
 // ============================================================
 async function deployRules(guild, silent = false) {
     const everyoneRole = guild.roles.everyone;
 
-    // ==========================================
-    // إرسال القوانين العامة
-    // ==========================================
+    // القوانين العامة
     try {
         const generalChannel = await guild.channels.fetch(GENERAL_RULES_CHANNEL_ID).catch(() => null);
         if (!generalChannel) {
@@ -174,7 +174,6 @@ async function deployRules(guild, silent = false) {
             return { success: false, message: 'البوت مش عنده صلاحية إرسال في روم القوانين العامة!' };
         }
 
-        // ✅ Embed منظر حلو للقوانين العامة
         const generalEmbed = new EmbedBuilder()
             .setColor(0x2b2d31)
             .setTitle('📜 مرحباً بكم في قوانين سيرفرنا')
@@ -186,7 +185,6 @@ async function deployRules(guild, silent = false) {
             })
             .setTimestamp();
 
-        // ✅ إرسال مع Mention لـ Everyone + Embed
         await generalChannel.send({
             content: `${everyoneRole} **يرجى قراءة القوانين بعناية**`,
             embeds: [generalEmbed]
@@ -198,9 +196,7 @@ async function deployRules(guild, silent = false) {
         return { success: false, message: 'خطأ في نشر القوانين العامة!' };
     }
 
-    // ==========================================
-    // إرسال قوانين الإدارة
-    // ==========================================
+    // قوانين الإدارة
     try {
         const adminChannel = await guild.channels.fetch(ADMIN_RULES_CHANNEL_ID).catch(() => null);
         if (!adminChannel) {
@@ -215,7 +211,6 @@ async function deployRules(guild, silent = false) {
             return { success: false, message: 'البوت مش عنده صلاحية إرسال في روم قوانين الإدارة!' };
         }
 
-        // ✅ Embed منظر حلو لقوانين الإدارة
         const adminEmbed = new EmbedBuilder()
             .setColor(0x2b2d31)
             .setTitle('📜 مرحباً بكم في قوانين الإدارة')
@@ -227,7 +222,6 @@ async function deployRules(guild, silent = false) {
             })
             .setTimestamp();
 
-        // ✅ إرسال مع Mention لـ Everyone + Embed
         await adminChannel.send({
             content: `${everyoneRole} **يرجى قراءة قوانين الإدارة بعناية**`,
             embeds: [adminEmbed]
@@ -655,7 +649,7 @@ client.once("ready", async () => {
         console.error('❌ خطأ في تسجيل أوامر السلاش:', error);
     }
 
-    // ✅ نشر القوانين تلقائيًا عند تشغيل البوت
+    // ✅ نشر القوانين تلقائيًا
     setTimeout(async () => {
         try {
             const guild = client.guilds.cache.get(GUILD_ID) || client.guilds.cache.first();
@@ -767,11 +761,26 @@ client.on('interactionCreate', async interaction => {
     }
 });
 
-process.on('unhandledRejection', () => {});
-process.on('uncaughtException', () => {});
+// ============================================================
+// حماية من الأخطاء
+// ============================================================
+process.on('unhandledRejection', (reason) => {
+    console.error('⚠️ [UNHANDLED]', reason?.message || reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('⚠️ [UNCAUGHT]', err?.message || err);
+});
 
+// ============================================================
+// Express Server
+// ============================================================
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`🌐 Server Port ${PORT}`);
 });
 
-client.login(process.env.DISCORD_TOKEN);
+// ============================================================
+// تسجيل الدخول
+// ============================================================
+client.login(process.env.DISCORD_TOKEN).catch((err) => {
+    console.error('❌ [LOGIN] فشل تسجيل الدخول:', err.message);
+});

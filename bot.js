@@ -117,27 +117,22 @@ async function isAuthorizedFast(guild, userId) {
 }
 
 // ============================================================
-// 🔥 دالة الترحيب — رسالة واحدة فقط (مضمون 100%)
+// دالة إرسال رسالة الترحيب (منع تكرار 4 طبقات)
 // ============================================================
 async function sendWelcomeMessage(guild, member) {
     const memberId = member.id;
 
-    // تجاهل البوتات
-    if (member.user.bot) return;
-
-    // 🛡️ الطبقة 1: لو اترحب بيه قبل كده أو قيد المعالجة — ارجع فورًا
     if (welcomedMembers.has(memberId)) return;
     if (welcomeProcessing.has(memberId)) return;
+    if (member.user.bot) return;
 
-    // 🛡️ الطبقة 2: قفل فوري (قبل أي await)
     welcomeProcessing.add(memberId);
     welcomedMembers.add(memberId);
     leftMembers.delete(memberId);
 
     try {
-        console.log(`\n🎉 [WELCOME] بدء الترحيب بـ ${member.user.tag}`);
+        console.log(`\n🎉 [WELCOME START] بدء الترحيب بـ ${member.user.tag}`);
 
-        // إعطاء الرول التلقائي
         try {
             const role = guild.roles.cache.get(AUTO_ROLE_ID);
             if (role) {
@@ -244,21 +239,10 @@ async function sendLeaveMessage(guild, memberId, memberTag) {
 }
 
 // ============================================================
-// 🔥 الأحداث الأساسية — منع تكرار على مستوى الحدث
+// الأحداث الأساسية
 // ============================================================
-// ✅ مجموعة لتتبع الأحداث اللي اتعملت خلاص (لمنع التكرار نهائيًا)
-const welcomeEventLock = new Set();
-
 client.on('guildMemberAdd', async (member) => {
     console.log(`\n🔔 [EVENT] guildMemberAdd: ${member.user.tag}`);
-
-    // 🛡️ قفل على مستوى الحدث — لو اتنادى قبل كده، ارجع فورًا
-    if (welcomeEventLock.has(member.id)) {
-        console.log(`⏭️ [EVENT-SKIP] ${member.user.tag} (الحدث اتنادى قبل كده)`);
-        return;
-    }
-    welcomeEventLock.add(member.id);
-
     await sendWelcomeMessage(member.guild, member);
 });
 

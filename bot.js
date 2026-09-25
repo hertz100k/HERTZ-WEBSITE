@@ -2,6 +2,8 @@ require("dotenv").config();
 const { Client, GatewayIntentBits, Partials, ChannelType, PermissionFlagsBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { joinVoiceChannel, entersState, VoiceConnectionStatus } = require("@discordjs/voice");
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
 
 const SUPPORT_CHANNEL_ID = "1549573975640637450";
 const ORDER_CHANNEL_ID = "1552304716434645032";
@@ -30,6 +32,37 @@ const LINK_SPAM_THRESHOLD = 2;
 const TEXT_SPAM_WINDOW = 5000;
 const TEXT_SPAM_THRESHOLD = 5;
 const TEXT_SPAM_TIMEOUT = 10 * 60 * 1000;
+
+// ✅ فايل تخزين دائم
+const DATA_FILE = path.join(__dirname, "bot_data.json");
+
+function loadData() {
+    try {
+        if (fs.existsSync(DATA_FILE)) {
+            const data = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+            return {
+                welcomedMembers: new Set(data.welcomedMembers || []),
+                leftMembers: new Set(data.leftMembers || []),
+                knownMembers: new Set(data.knownMembers || [])
+            };
+        }
+    } catch (e) { console.error("⚠️ [DATA] فشل قراءة الفايل:", e.message); }
+    return {
+        welcomedMembers: new Set(),
+        leftMembers: new Set(),
+        knownMembers: new Set()
+    };
+}
+
+function saveData() {
+    try {
+        fs.writeFileSync(DATA_FILE, JSON.stringify({
+            welcomedMembers: Array.from(welcomedMembers),
+            leftMembers: Array.from(leftMembers),
+            knownMembers: Array.from(knownMembers)
+        }, null, 2));
+    } catch (e) { console.error("⚠️ [DATA] فشل الحفظ:", e.message); }
+}
 
 const GENERAL_RULES_TEXT = `**1** - يجب احترام جميع الأعضاء والإدارة، ويُمنع نهائياً السب، الشتم، السخرية، أو الإهانة بأي شكل من الأشكال
 
@@ -67,17 +100,16 @@ const PORT = process.env.PORT || 3000;
 const TARGET_HOURS = 1000;
 let voiceSessionStartTime = null;
 
-// ============================================================
-// ✅ Sets لمنع التكرار
-// ============================================================
+// ✅ تحميل البيانات من الفايل
+const savedData = loadData();
+const welcomedMembers = savedData.welcomedMembers;
+const leftMembers = savedData.leftMembers;
+let knownMembers = savedData.knownMembers;
+
 const movedMessages = new Set();
 const processingLocks = new Set();
 const sourceMessagesDeleted = new Set();
 const vaultMessages = new Set();
-
-// ✅ مجموعة الأعضاء اللي اترحب بيهم ومغادروا
-const welcomedMembers = new Set();
-const leftMembers = new Set();
 
 const clearProcessing = new Set();
 const rulesProcessing = new Set();
@@ -88,6 +120,7 @@ console.log('\n🔍 [ENV CHECK]:');
 console.log('   DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? '✅' : '❌');
 console.log('   SUPABASE_URL:', process.env.SUPABASE_URL ? '✅' : '⚠️');
 console.log('   SUPABASE_KEY:', process.env.SUPABASE_KEY ? '✅' : '⚠️');
+console.log('📁 [DATA] welcomedMembers:', welcomedMembers.size, '| leftMembers:', leftMembers.size, '| knownMembers:', knownMembers.size);
 
 const client = new Client({
     intents: [
@@ -161,16 +194,17 @@ async function deployRules(guild, silent = false) {
 }
 
 // ============================================================
-// ✅ الترحيب (منع تكرار 100% - مرة واحدة بس)
+// ✅ الترحيب (مرة واحدة بس - بفحص الفايل)
 // ============================================================
 async function sendWelcomeMessage(guild, member) {
     const memberId = member.id;
-
     if (member.user.bot) return;
     if (welcomedMembers.has(memberId)) return;
 
-    // ✅ علامة فورية قبل أي حاجة
+    // ✅ علامة فورية + حفظ
     welcomedMembers.add(memberId);
+    leftMembers.delete(memberId);
+    saveData();
 
     try {
         console.log(`\n🎉 [WELCOME] ${member.user.tag}`);
@@ -198,13 +232,15 @@ async function sendWelcomeMessage(guild, member) {
 }
 
 // ============================================================
-// ✅ المغادرة (منع تكرار 100% - مرة واحدة بس)
+// ✅ المغادرة (مرة واحدة بس - بفحص الفايل)
 // ============================================================
 async function sendLeaveMessage(guild, memberId, memberTag) {
     if (leftMembers.has(memberId)) return;
 
-    // ✅ علامة فورية قبل أي حاجة
+    // ✅ علامة فورية + حفظ
     leftMembers.add(memberId);
+    welcomedMembers.delete(memberId);
+    saveData();
 
     try {
         console.log(`\n🚪 [LEAVE] ${memberTag}`);
@@ -220,11 +256,10 @@ async function sendLeaveMessage(guild, memberId, memberTag) {
 }
 
 // ============================================================
-// ❌❌❌ مش هنستخدم guildMemberAdd / guildMemberRemove
+// ❌ شيلت guildMemberAdd و guildMemberRemove خالص
 // ✅ Polling هو المصدر الوحيد
 // ============================================================
 
-let knownMembers = new Set();
 let pollCount = 0;
 let isFirstPoll = true;
 let isPolling = false;
@@ -238,33 +273,34 @@ async function pollMembers() {
         if (!guild) { isPolling = false; return; }
         const members = await guild.members.fetch();
 
-        // ✅ أول Poll: نسجل الأعضاء الحاليين ونخرج (عشان مفيش ترحيب جماعي)
+        // ✅ أول Poll: نسجل الأعضاء الحاليين (عشان مفيش ترحيب جماعي)
         if (isFirstPoll) {
             members.forEach(m => knownMembers.add(m.id));
+            saveData();
             console.log(`📋 [POLL #${pollCount}] تم تسجيل ${knownMembers.size} عضو (بدون إرسال ترحيب).`);
             isFirstPoll = false;
             isPolling = false;
             return;
         }
 
-        // ✅ الأعضاء الجدد: نبعت ترحيب (مرة واحدة بس)
+        // ✅ الأعضاء الجدد: ترحيب مرة واحدة بس
         for (const [id, member] of members) {
             if (!knownMembers.has(id)) {
                 knownMembers.add(id);
+                saveData();
                 if (member.user.bot) continue;
                 if (welcomedMembers.has(id)) continue;
-
                 console.log(`\n🆕 [POLL] عضو جديد: ${member.user.tag}`);
                 await sendWelcomeMessage(guild, member);
             }
         }
 
-        // ✅ الأعضاء اللي خرجوا: نبعت مغادرة (مرة واحدة بس)
+        // ✅ الأعضاء اللي خرجوا: مغادرة مرة واحدة بس
         for (const id of knownMembers) {
             if (!members.has(id)) {
                 knownMembers.delete(id);
+                saveData();
                 if (leftMembers.has(id)) continue;
-
                 try {
                     const user = await client.users.fetch(id).catch(() => null);
                     if (user && !user.bot) {
@@ -337,7 +373,7 @@ client.on('messageCreate', async (message) => {
 });
 
 // ============================================================
-// ✅ نقل الرسائل للمخزن (منع تكرار 100%)
+// ✅ نقل الرسائل للمخزن (مرة واحدة بس)
 // ============================================================
 client.on('messageReactionAdd', async (reaction, user) => {
     if (user.bot) return;
@@ -459,10 +495,6 @@ client.once("ready", async () => {
     console.log(`✅ HERTZ ADMIN BOT: ${client.user.tag}`);
     console.log(`============================================\n`);
 
-    // ✅ نمسح الـ Sets عشان مع كل Restart، البوت يبدأ من جديد بدون تكرار
-    welcomedMembers.clear();
-    leftMembers.clear();
-
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     try {
         const commands = [
@@ -483,7 +515,7 @@ client.once("ready", async () => {
 
     connectToVoiceChannel();
 
-    // ✅ Polling كل 30 ثانية — المصدر الوحيد للترحيب والمغادرة
+    // ✅ Polling كل 30 ثانية
     setTimeout(async () => {
         await pollMembers();
         setInterval(pollMembers, 30000);

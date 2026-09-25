@@ -50,6 +50,14 @@ const processingLeave = new Map();   // guild:member -> timestamp
 const clearProcessing = new Set();
 const linkSpamMap = new Map();
 
+// ============================================================
+// نظام حماية سبام الرسايل
+// ============================================================
+const messageSpamMap = new Map(); // userId -> { count: number, lastTime: timestamp, warned: boolean }
+const SPAM_THRESHOLD = 5; // عدد الرسايل في فترة قصيرة
+const SPAM_TIME_WINDOW = 5000; // 5 ثواني
+const SPAM_TIMEOUT_DURATION = 10 * 60 * 1000; // 10 دقائق
+
 const SUPABASE_KEY =
     process.env.SUPABASE_KEY ||
     process.env.SUPABASE_ANON_KEY ||
@@ -182,7 +190,7 @@ async function sendLeaveMessage(guild, memberId, memberTag) {
         return;
     }
 
-    // قفل فوري
+    // قفل فو��ي
     processingLeave.set(key, Date.now());
 
     try {
@@ -335,17 +343,74 @@ client.on('messageReactionAdd', async (reaction, user) => {
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
 
+    const userId = message.author.id;
+    const isAdmin = await isAuthorizedFast(message.guild, message.author.id);
+
+    // ============================================================
+    // نظام حماية سبام الرسايل
+    // ============================================================
+    if (!isAdmin) {
+        const currentTime = Date.now();
+        let userSpamData = messageSpamMap.get(userId);
+
+        if (!userSpamData) {
+            userSpamData = { count: 1, lastTime: currentTime, warned: false };
+            messageSpamMap.set(userId, userSpamData);
+        } else {
+            // إذا كانت الرسالة في نفس الفترة الزمنية
+            if (currentTime - userSpamData.lastTime < SPAM_TIME_WINDOW) {
+                userSpamData.count += 1;
+            } else {
+                // تجاوز الفترة الزمنية، إعادة تعيين العداد
+                userSpamData.count = 1;
+                userSpamData.warned = false;
+            }
+            userSpamData.lastTime = currentTime;
+        }
+
+        // التحقق من السبام
+        if (userSpamData.count >= SPAM_THRESHOLD) {
+            try {
+                // إعطاء تايم أوت 10 دقائق
+                const member = await message.guild.members.fetch(userId);
+                await member.timeout(SPAM_TIMEOUT_DURATION, 'سبام رسائل متكرر');
+                
+                // إرسال رسالة تحذيرية
+                const timeoutMsg = await message.channel.send(`⛔ ${message.author}, تم إعطاؤك **تايم أوت لمدة 10 دقائق** بسبب السبام المتكرر.`);
+                setTimeout(() => timeoutMsg.delete().catch(() => {}), 7000);
+
+                console.log(`🚫 [SPAM TIMEOUT] ${message.author.tag} تم إعطاؤه تايم أوت لمدة 10 دقائق`);
+
+                // مسح البيانات
+                messageSpamMap.delete(userId);
+                return;
+            } catch (err) {
+                console.error('❌ خطأ في إعطاء تايم أوت:', err);
+            }
+        } else if (userSpamData.count === SPAM_THRESHOLD - 1 && !userSpamData.warned) {
+            // إرسال تحذير قبل التايم أوت
+            userSpamData.warned = true;
+            try {
+                const warningMsg = await message.channel.send(`⚠️ ${message.author}, **تحذير!** توقف عن السبام وإلا ستتعرض لتايم أوت.`);
+                setTimeout(() => warningMsg.delete().catch(() => {}), 5000);
+                console.log(`⚠️ [SPAM WARNING] ${message.author.tag} تحذير من السبام`);
+            } catch (err) {
+                console.error('❌ خطأ في إرسال التحذير:', err);
+            }
+        }
+    }
+
+    // ============================================================
     // حماية الروابط
+    // ============================================================
     const linkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gi;
 
     if (linkRegex.test(message.content)) {
-        const isAdmin = await isAuthorizedFast(message.guild, message.author.id);
         if (isAdmin) return;
 
         try {
             await message.delete();
 
-            const userId = message.author.id;
             const currentTime = Date.now();
 
             let userRecord = linkSpamMap.get(userId) || { count: 0, lastTime: currentTime };
@@ -381,7 +446,9 @@ client.on('messageCreate', async (message) => {
         }
     }
 
+    // ============================================================
     // نشر القوانين
+    // ============================================================
     if (message.content === '!sendrules') {
         try {
             const isAdmin = await isAuthorizedFast(message.guild, message.author.id);
@@ -421,7 +488,7 @@ client.on('messageCreate', async (message) => {
 
         } catch (error) {
             console.error('خطأ في نشر القوانين:', error);
-            message.reply('❌ حدث خطأ أثناء قراءة ملفا�� القوانين، تأكد من وجود ملفات الـ txt في نفس الفولدر.');
+            message.reply('❌ حدث خطأ أثناء قراءة ملفات القوانين، تأكد من وجود ملفات الـ txt في نفس الفولدر.');
         }
     }
 });

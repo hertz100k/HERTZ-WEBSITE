@@ -53,7 +53,7 @@ const linkSpamMap = new Map();
 // ============================================================
 // نظام حماية سبام الرسايل
 // ============================================================
-const messageSpamMap = new Map(); // userId -> { count: number, lastTime: timestamp, warned: boolean }
+const messageSpamMap = new Map(); // userId -> { count: number, lastTime: timestamp, warned: boolean, messageIds: [] }
 const SPAM_THRESHOLD = 5; // عدد الرسايل في فترة قصيرة
 const SPAM_TIME_WINDOW = 5000; // 5 ثواني
 const SPAM_TIMEOUT_DURATION = 10 * 60 * 1000; // 10 دقائق
@@ -116,6 +116,29 @@ async function isAuthorizedFast(guild, userId) {
         return member.roles.cache.has(AUTHORIZED_ROLE_ID);
     } catch (err) {
         return false;
+    }
+}
+
+// ============================================================
+// دالة مسح الرسايل التلقائية
+// ============================================================
+async function deleteMessagesAutomatic(channel, messageIds) {
+    if (!channel || !messageIds || messageIds.length === 0) return;
+    
+    try {
+        for (const msgId of messageIds) {
+            try {
+                const msg = await channel.messages.fetch(msgId).catch(() => null);
+                if (msg) {
+                    await msg.delete().catch(() => {});
+                    await new Promise(resolve => setTimeout(resolve, 100)); // تأخير صغير بين الحذف
+                }
+            } catch (err) {
+                console.error(`❌ خطأ في حذف الرسالة ${msgId}:`, err.message);
+            }
+        }
+    } catch (error) {
+        console.error(`❌ خطأ في مسح الرسايل:`, error.message);
     }
 }
 
@@ -190,7 +213,7 @@ async function sendLeaveMessage(guild, memberId, memberTag) {
         return;
     }
 
-    // قفل فو��ي
+    // قفل فوري
     processingLeave.set(key, Date.now());
 
     try {
@@ -354,16 +377,18 @@ client.on('messageCreate', async (message) => {
         let userSpamData = messageSpamMap.get(userId);
 
         if (!userSpamData) {
-            userSpamData = { count: 1, lastTime: currentTime, warned: false };
+            userSpamData = { count: 1, lastTime: currentTime, warned: false, messageIds: [message.id] };
             messageSpamMap.set(userId, userSpamData);
         } else {
             // إذا كانت الرسالة في نفس الفترة الزمنية
             if (currentTime - userSpamData.lastTime < SPAM_TIME_WINDOW) {
                 userSpamData.count += 1;
+                userSpamData.messageIds.push(message.id);
             } else {
                 // تجاوز الفترة الزمنية، إعادة تعيين العداد
                 userSpamData.count = 1;
                 userSpamData.warned = false;
+                userSpamData.messageIds = [message.id];
             }
             userSpamData.lastTime = currentTime;
         }
@@ -371,15 +396,18 @@ client.on('messageCreate', async (message) => {
         // التحقق من السبام
         if (userSpamData.count >= SPAM_THRESHOLD) {
             try {
+                // مسح جميع رسائل السبام تلقائياً
+                await deleteMessagesAutomatic(message.channel, userSpamData.messageIds);
+
                 // إعطاء تايم أوت 10 دقائق
                 const member = await message.guild.members.fetch(userId);
                 await member.timeout(SPAM_TIMEOUT_DURATION, 'سبام رسائل متكرر');
                 
-                // إرسال رسالة تحذيرية
-                const timeoutMsg = await message.channel.send(`⛔ ${message.author}, تم إعطاؤك **تايم أوت لمدة 10 دقائق** بسبب السبام المتكرر.`);
+                // إرسال رسالة تحذيرية (ستُحذف تلقائياً)
+                const timeoutMsg = await message.channel.send(`⛔ ${message.author}, تم إعطاؤك **تايم أوت لمدة 10 دقائق** بسبب السبام المتكرر. تم حذف رسائلك تلقائياً.`);
                 setTimeout(() => timeoutMsg.delete().catch(() => {}), 7000);
 
-                console.log(`🚫 [SPAM TIMEOUT] ${message.author.tag} تم إعطاؤه تايم أوت لمدة 10 دقائق`);
+                console.log(`🚫 [SPAM TIMEOUT] ${message.author.tag} تم إعطاؤه تايم أوت لمدة 10 دقائق + حذف الرسايل`);
 
                 // مسح البيانات
                 messageSpamMap.delete(userId);
@@ -409,7 +437,8 @@ client.on('messageCreate', async (message) => {
         if (isAdmin) return;
 
         try {
-            await message.delete();
+            // حذف الرسالة تلقائياً
+            await message.delete().catch(() => {});
 
             const currentTime = Date.now();
 
@@ -429,16 +458,18 @@ client.on('messageCreate', async (message) => {
                     await member.timeout(60 * 60 * 1000, 'إرسال روابط متكررة ومخالفة لقوانين السيرفر');
                     linkSpamMap.delete(userId);
 
-                    const warningMsg = await message.channel.send(`⚠️ ${message.author}, تم إعطاؤك **تايم أوت لمدة ساعة** بسبب إرسال الروابط المتكررة.`);
-                    setTimeout(() => warningMsg.delete().catch(() => {}), 5000);
+                    const warningMsg = await message.channel.send(`⚠️ ${message.author}, تم إعطاؤك **تايم أوت لمدة ساعة** بسبب إرسال الروابط المتكررة. رسالتك تم حذفها تلقائياً.`);
+                    setTimeout(() => warningMsg.delete().catch(() => {}), 7000);
+                    console.log(`🚫 [LINK TIMEOUT] ${message.author.tag} تم إعطاؤه تايم أوت لمدة ساعة + حذف الرسالة`);
                     return;
                 } catch (err) {
                     console.error('فشل إعطاء تايم أوت للعضو:', err);
                 }
             }
 
-            const firstWarning = await message.channel.send(`⚠️ ${message.author}, ممنوع نشر الروابط في السيرفر! التكرار سيؤدي إلى تايم أوت.`);
+            const firstWarning = await message.channel.send(`⚠️ ${message.author}, ممنوع نشر الروابط في السيرفر! التكرار سيؤدي إلى تايم أوت. رسالتك تم حذفها تلقائياً.`);
             setTimeout(() => firstWarning.delete().catch(() => {}), 5000);
+            console.log(`🔗 [LINK DELETE] ${message.author.tag} رسالة رابط محذوفة تلقائياً`);
             return;
 
         } catch (error) {

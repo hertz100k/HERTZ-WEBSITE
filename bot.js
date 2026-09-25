@@ -44,8 +44,8 @@ const sourceMessagesDeleted = new Set();
 const vaultMessages = new Set();
 
 // ✅ أقفال منفصلة لكل عضو لمنع تكرار الرسائل
-const processingWelcome = new Map(); // guild:member -> timestamp
-const processingLeave = new Map();   // guild:member -> timestamp
+const processingWelcome = new Set(); // guild:member ID مباشرة (تم معالجتها)
+const processingLeave = new Set();   // guild:member ID مباشرة (تم معالجتها)
 
 const clearProcessing = new Set();
 const linkSpamMap = new Map();
@@ -151,14 +151,11 @@ async function sendWelcomeMessage(guild, member) {
 
     const key = `${guild.id}:${member.id}`;
 
-    // منع التكرار: إذا كانت العملية قيد التنفيذ أو تمت مسبقاً في نفس جلسة البوت
+    // منع التكرار: إذا تمت معالجة هذا العضو مسبقاً
     if (processingWelcome.has(key)) {
-        console.log(`⏭️ [WELCOME SKIP] جاري معالجة الترحيب: ${member.user.tag}`);
+        console.log(`⏭️ [WELCOME SKIP] تم ترحيب هذا العضو من قبل: ${member.user.tag}`);
         return;
     }
-
-    // قفل فوري
-    processingWelcome.set(key, Date.now());
 
     try {
         console.log(`🎉 [WELCOME] ${member.user.tag}`);
@@ -177,7 +174,6 @@ async function sendWelcomeMessage(guild, member) {
         const welcomeChannel = await guild.channels.fetch(WELCOME_CHANNEL_ID).catch(() => null);
         if (!welcomeChannel) {
             console.error('❌ روم الترحيب غير موجود');
-            processingWelcome.delete(key);
             return;
         }
 
@@ -191,11 +187,11 @@ async function sendWelcomeMessage(guild, member) {
 
         await welcomeChannel.send({ embeds: [embed] });
         console.log(`✅ [WELCOME] رسالة واحدة فقط\n`);
+
+        // إضافة المفتاح للـ Set بعد معالجة الترحيب
+        processingWelcome.add(key);
     } catch (error) {
         console.error(`❌ [WELCOME ERROR]:`, error.message);
-    } finally {
-        // احتفظ بالقفل لمدة دقيقة لمنع التكرار
-        setTimeout(() => processingWelcome.delete(key), 60000);
     }
 }
 
@@ -209,12 +205,9 @@ async function sendLeaveMessage(guild, memberId, memberTag) {
 
     // منع التكرار
     if (processingLeave.has(key)) {
-        console.log(`⏭️ [LEAVE SKIP] جاري معالجة المغادرة: ${memberTag}`);
+        console.log(`⏭️ [LEAVE SKIP] تم تسجيل مغادرة هذا العضو من قبل: ${memberTag}`);
         return;
     }
-
-    // قفل فوري
-    processingLeave.set(key, Date.now());
 
     try {
         console.log(`🚪 [LEAVE] ${memberTag}`);
@@ -222,17 +215,16 @@ async function sendLeaveMessage(guild, memberId, memberTag) {
         const leaveChannel = await guild.channels.fetch(LEAVE_CHANNEL_ID).catch(() => null);
         if (!leaveChannel) {
             console.error('❌ روم المغادرة غير موجود');
-            processingLeave.delete(key);
             return;
         }
 
         await leaveChannel.send({ content: `**غادر** <@${memberId}>` });
         console.log(`✅ [LEAVE] رسالة واحدة فقط\n`);
+
+        // إضافة المفتاح للـ Set بعد معالجة المغادرة
+        processingLeave.add(key);
     } catch (error) {
         console.error(`❌ [LEAVE ERROR]:`, error.message);
-    } finally {
-        // احتفظ بالقفل لمدة دقيقة لمنع التكرار
-        setTimeout(() => processingLeave.delete(key), 60000);
     }
 }
 

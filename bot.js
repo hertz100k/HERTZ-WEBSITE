@@ -1,45 +1,37 @@
 require("dotenv").config();
-
 const { Client, GatewayIntentBits, Partials, ChannelType, PermissionFlagsBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require("discord.js");
 const { joinVoiceChannel, entersState, VoiceConnectionStatus } = require("@discordjs/voice");
-const { createClient } = require("@supabase/supabase-js");
 const express = require("express");
 
-// ============================================================
-// تعريف الآيبيهات
-// ============================================================
 const SUPPORT_CHANNEL_ID = "1549573975640637450";
 const ORDER_CHANNEL_ID = "1552304716434645032";
 const CANCEL_CHANNEL_ID = "1552295251182493726";
-
 const TRASH_SUPPORT_CHANNEL_ID = "1549529917757325322";
 const TRASH_ORDER_CHANNEL_ID = "1549530385908506694";
 const TRASH_CANCEL_CHANNEL_ID = "1549530638627897385";
-
 const TARGET_VOICE_CHANNEL_ID = "1550379501714808893";
 const TICKET_VOICE_CHANNEL_ID = "1550631251130581072";
 const AUTHORIZED_ROLE_ID = "1550641497173659778";
-
 const WELCOME_CHANNEL_ID = "1550624611937288253";
 const LEAVE_CHANNEL_ID = "1552651900736774164";
 const AUTO_ROLE_ID = "1550646079475683419";
 const WELCOME_IMAGE_URL = "https://raw.githubusercontent.com/titopanel2-oss/tool/main/welcome.gif";
 const SERVER_NAME = "co.developer support";
 const GUILD_ID = "1549528572037922868";
-
-// ✅ رومات القوانين
-const GENERAL_RULES_CHANNEL_ID = "1550604801015025756"; // روم القوانين العامة
-const ADMIN_RULES_CHANNEL_ID = "1550655493628895312";   // روم قوانين الإدارة
-
-// ✅ لينك صورة القوانين (اللي بعته)
+const GENERAL_RULES_CHANNEL_ID = "1550604801015025756";
+const ADMIN_RULES_CHANNEL_ID = "1550655493628895312";
 const RULES_IMAGE_URL = "https://raw.githubusercontent.com/hertz100k/HERTZ-WEBSITE/main/%D8%A7%D9%84%D9%82%D9%88%D9%86%D9%8A%D9%86.jpg";
 const ADMIN_RULES_IMAGE_URL = RULES_IMAGE_URL;
 
-// ============================================================
-// ✅ القوانين العامة
-// ============================================================
-const GENERAL_RULES_TEXT = 
-`**1** - يجب احترام جميع الأعضاء والإدارة، ويُمنع نهائياً السب، الشتم، السخرية، أو الإهانة بأي شكل من الأشكال
+const LINK_WARNING_DURATION = 5000;
+const LINK_TIMEOUT_DURATION = 60 * 60 * 1000;
+const LINK_SPAM_WINDOW = 60 * 1000;
+const LINK_SPAM_THRESHOLD = 2;
+const TEXT_SPAM_WINDOW = 5000;
+const TEXT_SPAM_THRESHOLD = 5;
+const TEXT_SPAM_TIMEOUT = 10 * 60 * 1000;
+
+const GENERAL_RULES_TEXT = `**1** - يجب احترام جميع الأعضاء والإدارة، ويُمنع نهائياً السب، الشتم، السخرية، أو الإهانة بأي شكل من الأشكال
 
 **2** - يمنع منعاً باتاً نشر الروابط الخارجية، الإعلانات للسيرفرات الأخرى، أو نشر روابط مشبوهة.
 
@@ -57,11 +49,7 @@ const GENERAL_RULES_TEXT =
 
 **9** - أي قرار يصدر من الإدارة أو المشرفين يجب تنفيذه، وفي حال وجود اعتراض يمكن فتحه كشكوى بشكل رسمي وبأدب داخل رومات الدعم.`;
 
-// ============================================================
-// ✅ قوانين الإدارة
-// ============================================================
-const ADMIN_RULES_TEXT = 
-`**1** - يجب على فريق الدعم والفريق التقني التعامل مع العملاء وأعضاء السيرفر بكل هدوء، احترافية، وسعة صدر، حتى في أصعب المواقف.
+const ADMIN_RULES_TEXT = `**1** - يجب على فريق الدعم والفريق التقني التعامل مع العملاء وأعضاء السيرفر بكل هدوء، احترافية، وسعة صدر، حتى في أصعب المواقف.
 
 **2** - يُمنع منعاً باتاً تداول أو تسريب أي معلومات خاصة بالعملاء، بيانات المواقع، أكواد برمجية خاصة، أو تفاصيل الإدارة خارج النطاق المخصص لذلك.
 
@@ -79,30 +67,22 @@ const PORT = process.env.PORT || 3000;
 const TARGET_HOURS = 1000;
 let voiceSessionStartTime = null;
 
-// ============================================================
-// أنظمة منع التكرار
-// ============================================================
+// ✅ Sets لمنع التكرار
 const movedMessages = new Set();
 const processingLocks = new Set();
 const sourceMessagesDeleted = new Set();
 const vaultMessages = new Set();
-
 const welcomedMembers = new Set();
 const leftMembers = new Set();
-const welcomeProcessing = new Set();
-const leaveProcessing = new Set();
 
 const clearProcessing = new Set();
 const rulesProcessing = new Set();
+const linkSpamMap = new Map();
+const textSpamMap = new Map();
 
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_KEY
-);
+console.log('\n🔍 [ENV CHECK]:');
+console.log('   DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? '✅' : '❌');
 
-// ============================================================
-// Discord Client
-// ============================================================
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -120,9 +100,6 @@ const client = new Client({
 
 let currentConnection = null;
 
-// ============================================================
-// Express Server
-// ============================================================
 const app = express();
 app.use(express.json());
 
@@ -131,241 +108,108 @@ app.get("/", (req, res) => {
     res.send(`HERTZ ADMIN BOT is running. | Voice: ${uptimeHours}h / ${TARGET_HOURS}h`);
 });
 
-// ============================================================
-// نظام الصلاحيات
-// ============================================================
 async function isAuthorizedFast(guild, userId) {
     try {
         let member = guild.members.cache.get(userId);
         if (!member) {
-            try {
-                member = await guild.members.fetch(userId);
-            } catch (fetchErr) {
-                return false;
-            }
+            try { member = await guild.members.fetch(userId); } catch (e) { return false; }
         }
         if (!member) return false;
         return member.roles.cache.has(AUTHORIZED_ROLE_ID);
-    } catch (err) {
-        return false;
-    }
+    } catch (err) { return false; }
 }
 
-// ============================================================
-// ✅ دالة نشر القوانين (Embed حلو + Mention Everyone)
-// ============================================================
 async function deployRules(guild, silent = false) {
     const everyoneRole = guild.roles.everyone;
-
-    // ==========================================
-    // إرسال القوانين العامة
-    // ==========================================
     try {
         const generalChannel = await guild.channels.fetch(GENERAL_RULES_CHANNEL_ID).catch(() => null);
-        if (!generalChannel) {
-            console.error(`❌ [RULES] روم القوانين العامة مش موجود!`);
-            return { success: false, message: 'روم القوانين العامة مش موجود، تأكد من الآي دي!' };
-        }
-
+        if (!generalChannel) { return { success: false, message: 'روم القوانين العامة مش موجود!' }; }
         const botMember = guild.members.me;
         const perms = generalChannel.permissionsFor(botMember);
-        if (!perms || !perms.has(PermissionFlagsBits.SendMessages)) {
-            console.error(`❌ [RULES] البوت مش عنده صلاحية إرسال في روم القوانين العامة!`);
-            return { success: false, message: 'البوت مش عنده صلاحية إرسال في روم القوانين العامة!' };
-        }
-
-        // ✅ Embed منظر حلو للقوانين العامة
+        if (!perms || !perms.has(PermissionFlagsBits.SendMessages)) { return { success: false, message: 'البوت مش عنده صلاحية إرسال!' }; }
         const generalEmbed = new EmbedBuilder()
-            .setColor(0x2b2d31)
-            .setTitle('📜 مرحباً بكم في قوانين سيرفرنا')
-            .setDescription(GENERAL_RULES_TEXT)
-            .setImage(RULES_IMAGE_URL)
-            .setFooter({ 
-                text: `${SERVER_NAME} • القوانين العامة`,
-                iconURL: guild.iconURL({ dynamic: true }) || undefined
-            })
+            .setColor(0x2b2d31).setTitle('📜 مرحباً بكم في قوانين سيرفرنا')
+            .setDescription(GENERAL_RULES_TEXT).setImage(RULES_IMAGE_URL)
+            .setFooter({ text: `${SERVER_NAME} • القوانين العامة`, iconURL: guild.iconURL({ dynamic: true }) || undefined })
             .setTimestamp();
+        await generalChannel.send({ content: `${everyoneRole} **يرجى قراءة القوانين بعناية**`, embeds: [generalEmbed] });
+        if (!silent) console.log(`✅ [RULES] القوانين العامة اتنشرت!`);
+    } catch (err) { console.error(`❌ [RULES]`, err.message); return { success: false, message: 'خطأ!' }; }
 
-        // ✅ إرسال مع Mention لـ Everyone + Embed
-        await generalChannel.send({
-            content: `${everyoneRole} **يرجى قراءة القوانين بعناية**`,
-            embeds: [generalEmbed]
-        });
-
-        if (!silent) console.log(`✅ [RULES] تم نشر القوانين العامة في #${generalChannel.name}`);
-    } catch (err) {
-        console.error(`❌ [RULES] خطأ في نشر القوانين العامة:`, err.message);
-        return { success: false, message: 'خطأ في نشر القوانين العامة!' };
-    }
-
-    // ==========================================
-    // إرسال قوانين الإدارة
-    // ==========================================
     try {
         const adminChannel = await guild.channels.fetch(ADMIN_RULES_CHANNEL_ID).catch(() => null);
-        if (!adminChannel) {
-            console.error(`❌ [RULES] روم قوانين الإدارة مش موجود!`);
-            return { success: false, message: 'روم قوانين الإدارة مش موجود، تأكد من الآي دي!' };
-        }
-
+        if (!adminChannel) { return { success: false, message: 'روم قوانين الإدارة مش موجود!' }; }
         const botMember = guild.members.me;
         const perms = adminChannel.permissionsFor(botMember);
-        if (!perms || !perms.has(PermissionFlagsBits.SendMessages)) {
-            console.error(`❌ [RULES] البوت مش عنده صلاحية إرسال في روم قوانين الإدارة!`);
-            return { success: false, message: 'البوت مش عنده صلاحية إرسال في روم قوانين الإدارة!' };
-        }
-
-        // ✅ Embed منظر حلو لقوانين الإدارة
+        if (!perms || !perms.has(PermissionFlagsBits.SendMessages)) { return { success: false, message: 'البوت مش عنده صلاحية إرسال!' }; }
         const adminEmbed = new EmbedBuilder()
-            .setColor(0x2b2d31)
-            .setTitle('📜 مرحباً بكم في قوانين الإدارة')
-            .setDescription(ADMIN_RULES_TEXT)
-            .setImage(ADMIN_RULES_IMAGE_URL)
-            .setFooter({ 
-                text: `${SERVER_NAME} • قوانين الإدارة`,
-                iconURL: guild.iconURL({ dynamic: true }) || undefined
-            })
+            .setColor(0x2b2d31).setTitle('📜 مرحباً بكم في قوانين الإدارة')
+            .setDescription(ADMIN_RULES_TEXT).setImage(ADMIN_RULES_IMAGE_URL)
+            .setFooter({ text: `${SERVER_NAME} • قوانين الإدارة`, iconURL: guild.iconURL({ dynamic: true }) || undefined })
             .setTimestamp();
+        await adminChannel.send({ content: `${everyoneRole} **يرجى قراءة قوانين الإدارة بعناية**`, embeds: [adminEmbed] });
+        if (!silent) console.log(`✅ [RULES] قوانين الإدارة اتنشرت!`);
+    } catch (err) { console.error(`❌ [RULES]`, err.message); return { success: false, message: 'خطأ!' }; }
 
-        // ✅ إرسال مع Mention لـ Everyone + Embed
-        await adminChannel.send({
-            content: `${everyoneRole} **يرجى قراءة قوانين الإدارة بعناية**`,
-            embeds: [adminEmbed]
-        });
-
-        if (!silent) console.log(`✅ [RULES] تم نشر قوانين الإدارة في #${adminChannel.name}`);
-    } catch (err) {
-        console.error(`❌ [RULES] خطأ في نشر قوانين الإدارة:`, err.message);
-        return { success: false, message: 'خطأ في نشر قوانين الإدارة!' };
-    }
-
-    return { success: true, message: '✅ تم نشر القوانين العامة وقوانين الإدارة بنجاح!' };
+    return { success: true, message: '✅ تم نشر القوانين بنجاح!' };
 }
 
 // ============================================================
-// دالة إرسال رسالة الترحيب
+// ✅ الترحيب (مرة واحدة بس)
 // ============================================================
 async function sendWelcomeMessage(guild, member) {
     const memberId = member.id;
-
-    if (welcomedMembers.has(memberId)) return;
-    if (welcomeProcessing.has(memberId)) return;
     if (member.user.bot) return;
+    if (welcomedMembers.has(memberId)) return;
 
-    welcomeProcessing.add(memberId);
     welcomedMembers.add(memberId);
     leftMembers.delete(memberId);
 
     try {
-        console.log(`\n🎉 [WELCOME START] بدء الترحيب بـ ${member.user.tag}`);
+        console.log(`\n🎉 [WELCOME] ${member.user.tag}`);
 
         try {
             const role = guild.roles.cache.get(AUTO_ROLE_ID);
-            if (role) {
-                await member.roles.add(role, 'رول تلقائي للأعضاء الجدد');
-                console.log(`✅ [AUTO ROLE] تم إعطاء الرول`);
-            }
-        } catch (roleError) {
-            console.error(`❌ [AUTO ROLE] فشل:`, roleError.message);
-        }
+            if (role) await member.roles.add(role, 'رول تلقائي');
+        } catch (e) { console.error(`❌ [AUTO ROLE]`, e.message); }
 
         const welcomeChannel = await guild.channels.fetch(WELCOME_CHANNEL_ID).catch(() => null);
-        if (!welcomeChannel) {
-            console.error(`❌ [WELCOME] قناة الترحيب مش موجودة!`);
-            welcomedMembers.delete(memberId);
-            return;
-        }
-
-        const botMember = guild.members.me;
-        if (!botMember) {
-            welcomedMembers.delete(memberId);
-            return;
-        }
-
-        const permissions = welcomeChannel.permissionsFor(botMember);
-        if (!permissions ||
-            !permissions.has(PermissionFlagsBits.ViewChannel) ||
-            !permissions.has(PermissionFlagsBits.SendMessages) ||
-            !permissions.has(PermissionFlagsBits.EmbedLinks)) {
-            console.error(`❌ [WELCOME] البوت مش عنده الصلاحيات الكافية!`);
-            welcomedMembers.delete(memberId);
-            return;
-        }
-
-        const memberMention = `<@${memberId}>`;
+        if (!welcomeChannel) return;
 
         const embed = new EmbedBuilder()
-            .setColor(0x5865F2)
-            .setTitle(`مرحباً بك في السيرفر`)
-            .setDescription(
-                `أهلاً بك يا ${memberMention} في سيرفر **${SERVER_NAME}**`
-            )
+            .setColor(0x5865F2).setTitle(`مرحباً بك في السيرفر`)
+            .setDescription(`أهلاً بك يا <@${memberId}> في سيرفر **${SERVER_NAME}**`)
             .setImage(WELCOME_IMAGE_URL)
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
             .setTimestamp();
 
         await welcomeChannel.send({ embeds: [embed] });
-
-        console.log(`✅ [WELCOME SUCCESS] تم الترحيب بـ ${member.user.tag}\n`);
-    } catch (error) {
-        console.error(`❌ [WELCOME ERROR]:`, error);
-        welcomedMembers.delete(memberId);
-    } finally {
-        welcomeProcessing.delete(memberId);
-    }
+        console.log(`✅ [WELCOME] ${member.user.tag}`);
+    } catch (e) { console.error(`❌ [WELCOME]`, e); }
 }
 
 // ============================================================
-// دالة إرسال رسالة المغادرة
+// ✅ المغادرة (مرة واحدة بس)
 // ============================================================
 async function sendLeaveMessage(guild, memberId, memberTag) {
     if (leftMembers.has(memberId)) return;
-    if (leaveProcessing.has(memberId)) return;
 
-    leaveProcessing.add(memberId);
     leftMembers.add(memberId);
     welcomedMembers.delete(memberId);
 
     try {
-        console.log(`\n🚪 [LEAVE START] بدء المغادرة لـ ${memberTag}`);
+        console.log(`\n🚪 [LEAVE] ${memberTag}`);
 
         const leaveChannel = await guild.channels.fetch(LEAVE_CHANNEL_ID).catch(() => null);
-        if (!leaveChannel) {
-            leftMembers.delete(memberId);
-            return;
-        }
+        if (!leaveChannel) return;
 
-        const botMember = guild.members.me;
-        if (!botMember) {
-            leftMembers.delete(memberId);
-            return;
-        }
-
-        const permissions = leaveChannel.permissionsFor(botMember);
-        if (!permissions ||
-            !permissions.has(PermissionFlagsBits.ViewChannel) ||
-            !permissions.has(PermissionFlagsBits.SendMessages)) {
-            leftMembers.delete(memberId);
-            return;
-        }
-
-        const memberMention = `<@${memberId}>`;
-
-        await leaveChannel.send({
-            content: `**غادر** ${memberMention}`
-        });
-
-        console.log(`✅ [LEAVE SUCCESS] تم تسجيل مغادرة ${memberTag}\n`);
-    } catch (error) {
-        console.error(`❌ [LEAVE ERROR]:`, error);
-        leftMembers.delete(memberId);
-    } finally {
-        leaveProcessing.delete(memberId);
-    }
+        await leaveChannel.send({ content: `**غادر** <@${memberId}>` });
+        console.log(`✅ [LEAVE] ${memberTag}`);
+    } catch (e) { console.error(`❌ [LEAVE]`, e); }
 }
 
 // ============================================================
-// الأحداث الأساسية
+// ✅ الأحداث الرسمية (مفيش Polling)
 // ============================================================
 client.on('guildMemberAdd', async (member) => {
     console.log(`\n🔔 [EVENT] guildMemberAdd: ${member.user.tag}`);
@@ -378,82 +222,68 @@ client.on('guildMemberRemove', async (member) => {
 });
 
 // ============================================================
-// Polling كل 30 ثانية
+// ✅ حماية الروابط + السبام
 // ============================================================
-let knownMembers = new Set();
-let pollCount = 0;
-let isFirstPoll = true;
-let isPolling = false;
+client.on('messageCreate', async (message) => {
+    if (message.author.bot || !message.guild) return;
+    const isAdmin = await isAuthorizedFast(message.guild, message.author.id);
+    if (isAdmin) return;
+    const userId = message.author.id;
+    const currentTime = Date.now();
 
-async function pollMembers() {
-    if (isPolling) return;
-    isPolling = true;
+    const linkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gi;
+
+    if (linkRegex.test(message.content)) {
+        try {
+            await message.delete().catch(() => {});
+            let userRecord = linkSpamMap.get(userId) || { count: 0, lastTime: currentTime };
+            if (currentTime - userRecord.lastTime < LINK_SPAM_WINDOW) userRecord.count += 1;
+            else userRecord.count = 1;
+            userRecord.lastTime = currentTime;
+            linkSpamMap.set(userId, userRecord);
+            console.log(`🔗 [LINK] ${message.author.tag} (تكرار: ${userRecord.count})`);
+            if (userRecord.count >= LINK_SPAM_THRESHOLD) {
+                try {
+                    const member = await message.guild.members.fetch(userId);
+                    await member.timeout(LINK_TIMEOUT_DURATION, 'إرسال روابط متكررة');
+                    linkSpamMap.delete(userId);
+                    const warningMsg = await message.channel.send(`⚠️ ${message.author} تم إعطاؤك **تايم أوت لمدة ساعة** بسبب إرسال الروابط المتكررة.`);
+                    setTimeout(() => warningMsg.delete().catch(() => {}), LINK_WARNING_DURATION);
+                    return;
+                } catch (err) { console.error('❌', err.message); }
+            }
+            const firstWarning = await message.channel.send(`⚠️ ${message.author} ممنوع نشر الروابط! التكرار سيؤدي إلى تايم أوت.`);
+            setTimeout(() => firstWarning.delete().catch(() => {}), LINK_WARNING_DURATION);
+            return;
+        } catch (e) { console.error('❌', e.message); }
+    }
 
     try {
-        pollCount++;
-        const guild = client.guilds.cache.get(GUILD_ID) || client.guilds.cache.first();
-        if (!guild) {
-            isPolling = false;
-            return;
+        let textRecord = textSpamMap.get(userId) || { timestamps: [] };
+        textRecord.timestamps = textRecord.timestamps.filter(ts => currentTime - ts < TEXT_SPAM_WINDOW);
+        textRecord.timestamps.push(currentTime);
+        textSpamMap.set(userId, textRecord);
+        if (textRecord.timestamps.length >= TEXT_SPAM_THRESHOLD) {
+            try {
+                const member = await message.guild.members.fetch(userId);
+                await member.timeout(TEXT_SPAM_TIMEOUT, 'إرسال رسائل سبام');
+                textSpamMap.delete(userId);
+                const warningMsg = await message.channel.send(`⚠️ ${message.author} تم إعطاؤك **تايم أوت لمدة 10 دقائق** بسبب السبام.`);
+                setTimeout(() => warningMsg.delete().catch(() => {}), LINK_WARNING_DURATION);
+                return;
+            } catch (err) { console.error('❌', err.message); }
         }
-
-        const members = await guild.members.fetch();
-
-        if (isFirstPoll) {
-            members.forEach(m => knownMembers.add(m.id));
-            console.log(`📋 [POLL #${pollCount}] تم تسجيل ${knownMembers.size} عضو حاليين.`);
-            isFirstPoll = false;
-            isPolling = false;
-            return;
-        }
-
-        for (const [id, member] of members) {
-            if (!knownMembers.has(id)) {
-                knownMembers.add(id);
-                if (member.user.bot) continue;
-                if (welcomedMembers.has(id)) continue;
-                if (welcomeProcessing.has(id)) continue;
-
-                console.log(`\n🆕 [POLL] عضو جديد دخل: ${member.user.tag}`);
-                await sendWelcomeMessage(guild, member);
-            }
-        }
-
-        for (const id of knownMembers) {
-            if (!members.has(id)) {
-                knownMembers.delete(id);
-                if (leftMembers.has(id)) continue;
-                if (leaveProcessing.has(id)) continue;
-
-                try {
-                    const user = await client.users.fetch(id).catch(() => null);
-                    if (user && !user.bot) {
-                        console.log(`\n🚪 [POLL] عضو خرج: ${user.tag}`);
-                        await sendLeaveMessage(guild, id, user.tag);
-                    }
-                } catch (e) {}
-            }
-        }
-    } catch (error) {
-        // صامت
-    } finally {
-        isPolling = false;
-    }
-}
+    } catch (e) { console.error('❌', e.message); }
+});
 
 // ============================================================
-// نظام النقل الرقابي
+// ✅ نقل الرسائل للمخزن (مرة واحدة بس)
 // ============================================================
 client.on('messageReactionAdd', async (reaction, user) => {
     if (user.bot) return;
-
-    if (reaction.partial) {
-        try { await reaction.fetch(); } catch (error) { return; }
-    }
+    if (reaction.partial) { try { await reaction.fetch(); } catch (e) { return; } }
     const message = reaction.message;
-    if (message.partial) {
-        try { await message.fetch(); } catch (error) { return; }
-    }
+    if (message.partial) { try { await message.fetch(); } catch (e) { return; } }
     if (!message.guild) return;
 
     const messageId = message.id;
@@ -465,47 +295,23 @@ client.on('messageReactionAdd', async (reaction, user) => {
     processingLocks.add(messageId);
 
     try {
-        const isTargetChannel =
-            message.channelId === SUPPORT_CHANNEL_ID ||
-            message.channelId === ORDER_CHANNEL_ID ||
-            message.channelId === CANCEL_CHANNEL_ID;
-
-        if (!isTargetChannel) {
-            processingLocks.delete(messageId);
-            return;
-        }
+        const isTargetChannel = message.channelId === SUPPORT_CHANNEL_ID || message.channelId === ORDER_CHANNEL_ID || message.channelId === CANCEL_CHANNEL_ID;
+        if (!isTargetChannel) { processingLocks.delete(messageId); return; }
 
         const authorized = await isAuthorizedFast(message.guild, user.id);
-        if (!authorized) {
-            processingLocks.delete(messageId);
-            return;
-        }
+        if (!authorized) { processingLocks.delete(messageId); return; }
 
-        const emoji = reaction.emoji.name;
-        if (emoji !== '✅') {
-            processingLocks.delete(messageId);
-            return;
-        }
+        if (reaction.emoji.name !== '✅') { processingLocks.delete(messageId); return; }
 
         let targetVaultId = null;
-        if (message.channelId === SUPPORT_CHANNEL_ID) {
-            targetVaultId = TRASH_SUPPORT_CHANNEL_ID;
-        } else if (message.channelId === ORDER_CHANNEL_ID) {
-            targetVaultId = TRASH_ORDER_CHANNEL_ID;
-        } else if (message.channelId === CANCEL_CHANNEL_ID) {
-            targetVaultId = TRASH_CANCEL_CHANNEL_ID;
-        }
+        if (message.channelId === SUPPORT_CHANNEL_ID) targetVaultId = TRASH_SUPPORT_CHANNEL_ID;
+        else if (message.channelId === ORDER_CHANNEL_ID) targetVaultId = TRASH_ORDER_CHANNEL_ID;
+        else if (message.channelId === CANCEL_CHANNEL_ID) targetVaultId = TRASH_CANCEL_CHANNEL_ID;
 
-        if (!targetVaultId) {
-            processingLocks.delete(messageId);
-            return;
-        }
+        if (!targetVaultId) { processingLocks.delete(messageId); return; }
 
         const vaultKey = `${targetVaultId}:${messageId}`;
-        if (vaultMessages.has(vaultKey)) {
-            processingLocks.delete(messageId);
-            return;
-        }
+        if (vaultMessages.has(vaultKey)) { processingLocks.delete(messageId); return; }
 
         movedMessages.add(messageId);
         vaultMessages.add(vaultKey);
@@ -524,16 +330,16 @@ client.on('messageReactionAdd', async (reaction, user) => {
             const msgFiles = message.attachments ? Array.from(message.attachments.values()).map(att => att.url) : [];
 
             await targetVault.send({
-                content: `👤 **بواسطة الأدمن:** <@${user.id}>\n📜 **المحتوى المنقول:**\n${msgContent !== "" ? msgContent : "**[مرفقات أو رسالة بدون نص]**"}`,
+                content: `👤 **بواسطة:** <@${user.id}>\n📜 **المحتوى:**\n${msgContent !== "" ? msgContent : "**[مرفقات]**"}`,
                 embeds: msgEmbeds,
                 files: msgFiles
             });
 
             sourceMessagesDeleted.add(messageId);
             await message.delete().catch(() => {});
-            console.log(`✅ [CLEAN MOVE SUCCESS] messageId=${messageId}`);
-        } catch (error) {
-            console.error(`❌ [MOVE ERROR]:`, error);
+            console.log(`✅ [MOVE] ${messageId}`);
+        } catch (e) {
+            console.error(`❌ [MOVE]`, e.message);
             movedMessages.delete(messageId);
             vaultMessages.delete(vaultKey);
         }
@@ -548,72 +354,41 @@ client.on('messageReactionAdd', async (reaction, user) => {
 client.on('channelCreate', async (channel) => {
     try {
         if (!channel.guild) return;
-        const channelName = channel.name.toLowerCase();
-        if (channelName.includes('ticket') || channelName.includes('تيكت')) {
-            const ticketVoice = await channel.guild.channels.fetch(TICKET_VOICE_CHANNEL_ID).catch(() => null);
-            if (ticketVoice) {
-                await ticketVoice.permissionOverwrites.edit(channel.guild.roles.everyone, {
-                    [PermissionFlagsBits.ViewChannel]: true,
-                    [PermissionFlagsBits.Connect]: true
-                });
-            }
+        const n = channel.name.toLowerCase();
+        if (n.includes('ticket') || n.includes('تيكت')) {
+            const v = await channel.guild.channels.fetch(TICKET_VOICE_CHANNEL_ID).catch(() => null);
+            if (v) await v.permissionOverwrites.edit(channel.guild.roles.everyone, { [PermissionFlagsBits.ViewChannel]: true, [PermissionFlagsBits.Connect]: true });
         }
-    } catch (error) {}
+    } catch (e) {}
 });
 
 client.on('channelDelete', async (channel) => {
     try {
         if (!channel.guild) return;
-        const channelName = channel.name.toLowerCase();
-        if (channelName.includes('ticket') || channelName.includes('تيكت')) {
-            const ticketVoice = await channel.guild.channels.fetch(TICKET_VOICE_CHANNEL_ID).catch(() => null);
-            if (ticketVoice) {
-                await ticketVoice.permissionOverwrites.edit(channel.guild.roles.everyone, {
-                    [PermissionFlagsBits.ViewChannel]: false,
-                    [PermissionFlagsBits.Connect]: false
-                });
-            }
+        const n = channel.name.toLowerCase();
+        if (n.includes('ticket') || n.includes('تيكت')) {
+            const v = await channel.guild.channels.fetch(TICKET_VOICE_CHANNEL_ID).catch(() => null);
+            if (v) await v.permissionOverwrites.edit(channel.guild.roles.everyone, { [PermissionFlagsBits.ViewChannel]: false, [PermissionFlagsBits.Connect]: false });
         }
-    } catch (error) {}
+    } catch (e) {}
 });
 
 // ============================================================
-// الاتصال الدائم بالفويس
+// الفويس
 // ============================================================
 async function connectToVoiceChannel() {
     try {
         const channel = await client.channels.fetch(TARGET_VOICE_CHANNEL_ID);
         if (!channel || channel.type !== ChannelType.GuildVoice) return;
-
-        const connection = joinVoiceChannel({
-            channelId: channel.id,
-            guildId: channel.guild.id,
-            adapterCreator: channel.guild.voiceAdapterCreator,
-            selfDeaf: false,
-            selfMute: false
-        });
+        const connection = joinVoiceChannel({ channelId: channel.id, guildId: channel.guild.id, adapterCreator: channel.guild.voiceAdapterCreator, selfDeaf: false, selfMute: false });
         currentConnection = connection;
-
-        connection.on(VoiceConnectionStatus.Ready, () => {
-            if (!voiceSessionStartTime) voiceSessionStartTime = Date.now();
-        });
-
+        connection.on(VoiceConnectionStatus.Ready, () => { if (!voiceSessionStartTime) voiceSessionStartTime = Date.now(); });
         connection.on(VoiceConnectionStatus.Disconnected, async () => {
-            try {
-                await entersState(connection, VoiceConnectionStatus.Signalling, 1_000);
-            } catch (error) {
-                try { connection.destroy(); } catch (e) {}
-                setTimeout(connectToVoiceChannel, 200);
-            }
+            try { await entersState(connection, VoiceConnectionStatus.Signalling, 1_000); }
+            catch (e) { try { connection.destroy(); } catch (err) {} setTimeout(connectToVoiceChannel, 200); }
         });
-
-        connection.on('error', () => {
-            try { connection.destroy(); } catch (e) {}
-            setTimeout(connectToVoiceChannel, 200);
-        });
-    } catch (error) {
-        setTimeout(connectToVoiceChannel, 1000);
-    }
+        connection.on('error', () => { try { connection.destroy(); } catch (e) {} setTimeout(connectToVoiceChannel, 200); });
+    } catch (e) { setTimeout(connectToVoiceChannel, 1000); }
 }
 
 // ============================================================
@@ -621,84 +396,42 @@ async function connectToVoiceChannel() {
 // ============================================================
 client.once("ready", async () => {
     console.log(`\n============================================`);
-    console.log(`✅ HERTZ ADMIN BOT is online: ${client.user.tag}`);
-    console.log(`📋 SERVER MEMBERS INTENT: ${client.options.intents.has('GuildMembers') ? '✅ مفعّل' : '❌ مش مفعّل'}`);
-    console.log(`📋 GUILD ID: ${GUILD_ID}`);
-    console.log(`📋 GENERAL RULES CHANNEL: ${GENERAL_RULES_CHANNEL_ID}`);
-    console.log(`📋 ADMIN RULES CHANNEL: ${ADMIN_RULES_CHANNEL_ID}`);
+    console.log(`✅ HERTZ ADMIN BOT: ${client.user.tag}`);
     console.log(`============================================\n`);
 
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     try {
         const commands = [
-            new SlashCommandBuilder()
-                .setName('clear')
-                .setDescription('حذف عدد معين من الرسائل بسرعة (خاص بالإدارة)')
-                .addIntegerOption(option =>
-                    option.setName('count')
-                        .setDescription('عدد الرسائل المراد حذفها (من 1 إلى 100)')
-                        .setRequired(true)
-                        .setMinValue(1)
-                        .setMaxValue(100)
-                ),
-            new SlashCommandBuilder()
-                .setName('sendrules')
-                .setDescription('نشر القوانين العامة وقوانين الإدارة (خاص بالإدارة)')
-        ].map(command => command.toJSON());
+            new SlashCommandBuilder().setName('clear').setDescription('حذف رسائل (خاص بالإدارة)')
+                .addIntegerOption(o => o.setName('count').setDescription('العدد (1-100)').setRequired(true).setMinValue(1).setMaxValue(100)),
+            new SlashCommandBuilder().setName('sendrules').setDescription('نشر القوانين (خاص بالإدارة)')
+        ].map(c => c.toJSON());
+        await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
+        console.log('✅ تم تسجيل الأوامر!');
+    } catch (e) { console.error('❌', e); }
 
-        await rest.put(
-            Routes.applicationCommands(client.user.id),
-            { body: commands },
-        );
-        console.log('✅ تم تسجيل الأوامر بنجاح!');
-    } catch (error) {
-        console.error('❌ خطأ في تسجيل أوامر السلاش:', error);
-    }
-
-    // ✅ نشر القوانين تلقائيًا عند تشغيل البوت
     setTimeout(async () => {
         try {
             const guild = client.guilds.cache.get(GUILD_ID) || client.guilds.cache.first();
-            if (guild) {
-                console.log('\n📜 [RULES] جاري نشر القوانين تلقائيًا...');
-                const result = await deployRules(guild, false);
-                if (result.success) {
-                    console.log('✅ [RULES] تم نشر القوانين بنجاح عند التشغيل!');
-                } else {
-                    console.error(`❌ [RULES] ${result.message}`);
-                }
-            }
-        } catch (err) {
-            console.error('❌ [RULES] خطأ في النشر التلقائي:', err.message);
-        }
+            if (guild) { const r = await deployRules(guild, false); if (r.success) console.log('✅ [RULES] نشر تلقائي!'); else console.error(`❌ ${r.message}`); }
+        } catch (e) { console.error('❌', e.message); }
     }, 3000);
 
     connectToVoiceChannel();
 
-    console.log('🔄 [POLL] جاري تشغيل مراقبة الأعضاء (كل 30 ثانية)...');
-    setTimeout(async () => {
-        await pollMembers();
-        setInterval(pollMembers, 30000);
-    }, 5000);
-
-    setInterval(async () => {
+    setInterval(() => {
         try {
-            if (!currentConnection || currentConnection.state.status === VoiceConnectionStatus.Disconnected || currentConnection.state.status === VoiceConnectionStatus.Destroyed) {
-                connectToVoiceChannel();
-            }
-        } catch (e) {
-            connectToVoiceChannel();
-        }
+            if (!currentConnection || currentConnection.state.status === VoiceConnectionStatus.Disconnected || currentConnection.state.status === VoiceConnectionStatus.Destroyed) connectToVoiceChannel();
+        } catch (e) { connectToVoiceChannel(); }
     }, 10 * 1000);
 });
 
 // ============================================================
-// التعامل مع أوامر السلاش
+// ✅ أوامر السلاش
 // ============================================================
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // أمر /clear
     if (interaction.commandName === 'clear') {
         const userId = interaction.user.id;
 
@@ -712,66 +445,56 @@ client.on('interactionCreate', async interaction => {
         try {
             const authorized = await isAuthorizedFast(interaction.guild, userId);
             if (!authorized) {
-                await interaction.reply({ content: '❌ عذراً، هذا الأمر مخصص للإدارة العليا فقط!', ephemeral: true });
+                await interaction.reply({ content: '❌ للإدارة فقط!', ephemeral: true });
                 clearProcessing.delete(userId);
                 return;
             }
 
             const count = interaction.options.getInteger('count');
 
-            await interaction.deferReply({ ephemeral: true });
-            const deleted = await interaction.channel.bulkDelete(count, true);
-            await interaction.editReply({ content: `✅ تم بنجاح حذف **${deleted.size}** رسالة بكل نظافة.` });
-        } catch (error) {
-            console.error('❌ خطأ أثناء مسح الرسائل:', error);
-            try {
-                await interaction.editReply({ content: '❌ حدث خطأ أثناء محاولة مسح الرسائل.' });
-            } catch (e) {}
-        } finally {
-            clearProcessing.delete(userId);
-        }
-    }
-
-    // أمر /sendrules
-    if (interaction.commandName === 'sendrules') {
-        const userId = interaction.user.id;
-
-        if (rulesProcessing.has(userId)) {
-            await interaction.reply({ content: '⏳ في عملية نشر قوانين جارية بالفعل.', ephemeral: true });
-            return;
-        }
-
-        rulesProcessing.add(userId);
-
-        try {
-            const authorized = await isAuthorizedFast(interaction.guild, userId);
-            if (!authorized) {
-                await interaction.reply({ content: '❌ عذراً، هذا الأمر مخصص للإدارة فقط!', ephemeral: true });
-                rulesProcessing.delete(userId);
+            if (!interaction.channel || !interaction.channel.isTextBased()) {
+                await interaction.reply({ content: '❌ الأمر ده في الرومات النصية بس!', ephemeral: true });
+                clearProcessing.delete(userId);
                 return;
             }
 
             await interaction.deferReply({ ephemeral: true });
 
-            const result = await deployRules(interaction.guild, true);
+            const deleted = await interaction.channel.bulkDelete(count, true);
 
-            await interaction.editReply({ content: result.message });
-        } catch (error) {
-            console.error('❌ خطأ في نشر القوانين:', error);
+            if (deleted.size === 0) {
+                await interaction.editReply({ content: '⚠️ مفيش رسائل اتحذفت (ممكن تكون أقدم من 14 يوم أو مفيش رسائل).' });
+            } else {
+                await interaction.editReply({ content: `✅ تم حذف **${deleted.size}** رسالة بنجاح.` });
+            }
+        } catch (e) {
+            console.error('❌ [CLEAR]', e);
             try {
-                await interaction.editReply({ content: '❌ حدث خطأ أثناء نشر القوانين.' });
-            } catch (e) {}
+                await interaction.editReply({ content: `❌ خطأ: ${e.message}` });
+            } catch (err) {}
         } finally {
-            rulesProcessing.delete(userId);
+            clearProcessing.delete(userId);
         }
+    }
+
+    if (interaction.commandName === 'sendrules') {
+        const userId = interaction.user.id;
+        if (rulesProcessing.has(userId)) { await interaction.reply({ content: '⏳', ephemeral: true }); return; }
+        rulesProcessing.add(userId);
+        try {
+            const authorized = await isAuthorizedFast(interaction.guild, userId);
+            if (!authorized) { await interaction.reply({ content: '❌ للإدارة فقط!', ephemeral: true }); rulesProcessing.delete(userId); return; }
+            await interaction.deferReply({ ephemeral: true });
+            const result = await deployRules(interaction.guild, true);
+            await interaction.editReply({ content: result.message });
+        } catch (e) { try { await interaction.editReply({ content: '❌ خطأ.' }); } catch (err) {} }
+        finally { rulesProcessing.delete(userId); }
     }
 });
 
-process.on('unhandledRejection', () => {});
-process.on('uncaughtException', () => {});
+process.on('unhandledRejection', (r) => console.error('⚠️', r?.message || r));
+process.on('uncaughtException', (e) => console.error('⚠️', e?.message || e));
 
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🌐 Server Port ${PORT}`);
-});
+app.listen(PORT, "0.0.0.0", () => console.log(`🌐 Port ${PORT}`));
 
-client.login(process.env.DISCORD_TOKEN);
+client.login(process.env.DISCORD_TOKEN).catch((err) => console.error('❌ [LOGIN]', err.message));

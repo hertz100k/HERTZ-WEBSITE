@@ -28,7 +28,6 @@ const WELCOME_IMAGE_URL = "https://raw.githubusercontent.com/titopanel2-oss/tool
 const SERVER_NAME = "co.developer support";
 const GUILD_ID = "1549528572037922868";
 
-// ✅ آي ديهات رومات القوانين
 const GENERAL_RULES_CHANNEL_ID = "1550604801015025756";
 const ADMIN_RULES_CHANNEL_ID = "1550655493628895312";
 
@@ -44,21 +43,13 @@ const processingLocks = new Set();
 const sourceMessagesDeleted = new Set();
 const vaultMessages = new Set();
 
-const welcomedMembers = new Set();
-const leftMembers = new Set();
-const welcomeProcessing = new Set();
-const leaveProcessing = new Set();
-
-// ✅ أقفال على مستوى الحدث
-const welcomeEventLock = new Set();
-const leaveEventLock = new Set();
+// ✅ أقفال منفصلة لكل عضو لمنع تكرار الرسائل
+const processingWelcome = new Map(); // guild:member -> timestamp
+const processingLeave = new Map();   // guild:member -> timestamp
 
 const clearProcessing = new Set();
-
-// ✅ خريطة تتبع تكرار الروابط
 const linkSpamMap = new Map();
 
-// ✅ قراءة المفتاح من أي اسم متغير محتمل
 const SUPABASE_KEY =
     process.env.SUPABASE_KEY ||
     process.env.SUPABASE_ANON_KEY ||
@@ -121,180 +112,124 @@ async function isAuthorizedFast(guild, userId) {
 }
 
 // ============================================================
-// 🔥 دالة الترحيب — رسالة واحدة فقط (قفل صارم)
+// دالة الترحيب (رسالة واحدة فقط)
 // ============================================================
 async function sendWelcomeMessage(guild, member) {
-    const memberId = member.id;
-
+    if (!guild || !member || !member.user) return;
     if (member.user.bot) return;
 
-    // 🛡️ فحص مزدوج
-    if (welcomedMembers.has(memberId)) return;
-    if (welcomeProcessing.has(memberId)) return;
+    const key = `${guild.id}:${member.id}`;
 
-    // ✅ قفل فوري قبل أي await
-    welcomeProcessing.add(memberId);
-    welcomedMembers.add(memberId);
-    leftMembers.delete(memberId);
+    // منع التكرار: إذا كانت العملية قيد التنفيذ أو تمت مسبقاً في نفس جلسة البوت
+    if (processingWelcome.has(key)) {
+        console.log(`⏭️ [WELCOME SKIP] جاري معالجة الترحيب: ${member.user.tag}`);
+        return;
+    }
+
+    // قفل فوري
+    processingWelcome.set(key, Date.now());
 
     try {
-        console.log(`\n🎉 [WELCOME] ${member.user.tag}`);
+        console.log(`🎉 [WELCOME] ${member.user.tag}`);
 
+        // إضافة الرتبة التلقائية
         try {
             const role = guild.roles.cache.get(AUTO_ROLE_ID);
-            if (role) await member.roles.add(role, 'رول تلقائي');
+            if (role) {
+                await member.roles.add(role, 'رول تلقائي');
+                console.log(`✅ [AUTO ROLE] تمت الإضافة`);
+            }
         } catch (roleError) {
-            console.error(`❌ [AUTO ROLE] فشل:`, roleError.message);
+            console.error(`❌ [AUTO ROLE]:`, roleError.message);
         }
 
         const welcomeChannel = await guild.channels.fetch(WELCOME_CHANNEL_ID).catch(() => null);
-        if (!welcomeChannel) return;
+        if (!welcomeChannel) {
+            console.error('❌ روم الترحيب غير موجود');
+            processingWelcome.delete(key);
+            return;
+        }
 
         const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setTitle(`مرحباً بك في السيرفر`)
-            .setDescription(`أهلاً بك يا <@${memberId}> في سيرفر **${SERVER_NAME}**`)
+            .setDescription(`أهلاً بك يا <@${member.id}> في سيرفر **${SERVER_NAME}**`)
             .setImage(WELCOME_IMAGE_URL)
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
             .setTimestamp();
 
         await welcomeChannel.send({ embeds: [embed] });
-        console.log(`✅ [WELCOME] تم الترحيب بـ ${member.user.tag}\n`);
+        console.log(`✅ [WELCOME] رسالة واحدة فقط\n`);
     } catch (error) {
-        console.error(`❌ [WELCOME ERROR]:`, error);
-        welcomedMembers.delete(memberId);
+        console.error(`❌ [WELCOME ERROR]:`, error.message);
     } finally {
-        welcomeProcessing.delete(memberId);
+        // احتفظ بالقفل لمدة دقيقة لمنع التكرار
+        setTimeout(() => processingWelcome.delete(key), 60000);
     }
 }
 
 // ============================================================
-// 🔥 دالة المغادرة — رسالة واحدة فقط (قفل صارم)
+// دالة المغادرة (رسالة واحدة فقط)
 // ============================================================
 async function sendLeaveMessage(guild, memberId, memberTag) {
-    if (leftMembers.has(memberId)) return;
-    if (leaveProcessing.has(memberId)) return;
+    if (!guild || !memberId) return;
 
-    // ✅ قفل فوري قبل أي await
-    leaveProcessing.add(memberId);
-    leftMembers.add(memberId);
-    welcomedMembers.delete(memberId);
+    const key = `${guild.id}:${memberId}`;
+
+    // منع التكرار
+    if (processingLeave.has(key)) {
+        console.log(`⏭️ [LEAVE SKIP] جاري معالجة المغادرة: ${memberTag}`);
+        return;
+    }
+
+    // قفل فوري
+    processingLeave.set(key, Date.now());
 
     try {
-        console.log(`\n🚪 [LEAVE] ${memberTag}`);
+        console.log(`🚪 [LEAVE] ${memberTag}`);
 
         const leaveChannel = await guild.channels.fetch(LEAVE_CHANNEL_ID).catch(() => null);
-        if (!leaveChannel) return;
+        if (!leaveChannel) {
+            console.error('❌ روم المغادرة غير موجود');
+            processingLeave.delete(key);
+            return;
+        }
 
         await leaveChannel.send({ content: `**غادر** <@${memberId}>` });
-        console.log(`✅ [LEAVE] تم تسجيل مغادرة ${memberTag}\n`);
+        console.log(`✅ [LEAVE] رسالة واحدة فقط\n`);
     } catch (error) {
-        console.error(`❌ [LEAVE ERROR]:`, error);
-        leftMembers.delete(memberId);
+        console.error(`❌ [LEAVE ERROR]:`, error.message);
     } finally {
-        leaveProcessing.delete(memberId);
+        // احتفظ بالقفل لمدة دقيقة لمنع التكرار
+        setTimeout(() => processingLeave.delete(key), 60000);
     }
 }
 
 // ============================================================
-// 🔥 الأحداث — قفل على مستوى الحدث نفسه
+// أحداث دخول وخروج الأعضاء (المصدر الوحيد)
 // ============================================================
 client.on('guildMemberAdd', async (member) => {
-    console.log(`\n🔔 [EVENT] guildMemberAdd: ${member.user.tag}`);
-
-    // ✅ قفل الحدث — لو اتنادى قبل كده، ارجع فورًا
-    if (welcomeEventLock.has(member.id)) {
-        console.log(`⏭️ [EVENT-SKIP] ${member.user.tag} (الحدث مكرر)`);
-        return;
+    try {
+        if (!member || !member.user || member.user.bot) return;
+        console.log(`🔔 [EVENT] دخول عضو: ${member.user.tag}`);
+        await sendWelcomeMessage(member.guild, member);
+    } catch (error) {
+        console.error(`❌ [guildMemberAdd ERROR]:`, error.message);
     }
-    welcomeEventLock.add(member.id);
-
-    await sendWelcomeMessage(member.guild, member);
 });
 
 client.on('guildMemberRemove', async (member) => {
-    console.log(`\n🔔 [EVENT] guildMemberRemove: ${member.user.tag}`);
-
-    // ✅ قفل الحدث — لو اتنادى قبل كده، ارجع فورًا
-    if (leaveEventLock.has(member.id)) {
-        console.log(`⏭️ [EVENT-SKIP] ${member.user.tag} (الحدث مكرر)`);
-        return;
+    try {
+        if (!member || !member.user || member.user.bot) return;
+        console.log(`🔔 [EVENT] خروج عضو: ${member.user.tag}`);
+        await sendLeaveMessage(member.guild, member.id, member.user.tag);
+    } catch (error) {
+        console.error(`❌ [guildMemberRemove ERROR]:`, error.message);
     }
-    leaveEventLock.add(member.id);
-
-    await sendLeaveMessage(member.guild, member.id, member.user.tag);
 });
 
 // ============================================================
-// Polling كل 30 ثانية (مع منع تكرار)
-// ============================================================
-let knownMembers = new Set();
-let pollCount = 0;
-let isFirstPoll = true;
-let isPolling = false;
-
-async function pollMembers() {
-    if (isPolling) return;
-    isPolling = true;
-
-    try {
-        pollCount++;
-        const guild = client.guilds.cache.get(GUILD_ID) || client.guilds.cache.first();
-        if (!guild) {
-            isPolling = false;
-            return;
-        }
-
-        const members = await guild.members.fetch();
-
-        if (isFirstPoll) {
-            members.forEach(m => knownMembers.add(m.id));
-            console.log(`📋 [POLL #${pollCount}] تم تسجيل ${knownMembers.size} عضو حاليين.`);
-            isFirstPoll = false;
-            isPolling = false;
-            return;
-        }
-
-        for (const [id, member] of members) {
-            if (!knownMembers.has(id)) {
-                knownMembers.add(id);
-                if (member.user.bot) continue;
-                if (welcomedMembers.has(id)) continue;
-                if (welcomeProcessing.has(id)) continue;
-                if (welcomeEventLock.has(id)) continue;
-
-                console.log(`\n🆕 [POLL] عضو جديد دخل: ${member.user.tag}`);
-                welcomeEventLock.add(id);
-                await sendWelcomeMessage(guild, member);
-            }
-        }
-
-        for (const id of knownMembers) {
-            if (!members.has(id)) {
-                knownMembers.delete(id);
-                if (leftMembers.has(id)) continue;
-                if (leaveProcessing.has(id)) continue;
-                if (leaveEventLock.has(id)) continue;
-
-                try {
-                    const user = await client.users.fetch(id).catch(() => null);
-                    if (user && !user.bot) {
-                        console.log(`\n🚪 [POLL] عضو خرج: ${user.tag}`);
-                        leaveEventLock.add(id);
-                        await sendLeaveMessage(guild, id, user.tag);
-                    }
-                } catch (e) {}
-            }
-        }
-    } catch (error) {
-        // صامت
-    } finally {
-        isPolling = false;
-    }
-}
-
-// ============================================================
-// نظام النقل الرقابي (Move) - 5 طبقات منع تكرار
+// نظام النقل الرقابي
 // ============================================================
 client.on('messageReactionAdd', async (reaction, user) => {
     if (user.bot) return;
@@ -395,12 +330,12 @@ client.on('messageReactionAdd', async (reaction, user) => {
 });
 
 // ============================================================
-// ✅ نظام حماية الروابط + نشر القوانين
+// نظام حماية الروابط ونشر القوانين
 // ============================================================
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
 
-    // 1. حماية الروابط
+    // حماية الروابط
     const linkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gi;
 
     if (linkRegex.test(message.content)) {
@@ -446,7 +381,7 @@ client.on('messageCreate', async (message) => {
         }
     }
 
-    // 2. نشر القوانين
+    // نشر القوانين
     if (message.content === '!sendrules') {
         try {
             const isAdmin = await isAuthorizedFast(message.guild, message.author.id);
@@ -486,7 +421,7 @@ client.on('messageCreate', async (message) => {
 
         } catch (error) {
             console.error('خطأ في نشر القوانين:', error);
-            message.reply('❌ حدث خطأ أثناء قراءة ملفات القوانين، تأكد من وجود ملفات الـ txt في نفس الفولدر.');
+            message.reply('❌ حدث خطأ أثناء قراءة ملفا�� القوانين، تأكد من وجود ملفات الـ txt في نفس الفولدر.');
         }
     }
 });
@@ -597,6 +532,7 @@ client.once("ready", async () => {
     console.log(`📋 VOICE CHANNEL: ${TARGET_VOICE_CHANNEL_ID}`);
     console.log(`📋 GENERAL RULES CHANNEL: ${GENERAL_RULES_CHANNEL_ID}`);
     console.log(`📋 ADMIN RULES CHANNEL: ${ADMIN_RULES_CHANNEL_ID}`);
+    console.log(`📋 MODE: Discord Events Only (No Polling)`);
     console.log(`============================================\n`);
 
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
@@ -628,12 +564,6 @@ client.once("ready", async () => {
 
     connectToVoiceChannel();
 
-    console.log('🔄 [POLL] جاري تشغيل مراقبة الأعضاء (كل 30 ثانية)...');
-    setTimeout(async () => {
-        await pollMembers();
-        setInterval(pollMembers, 30000);
-    }, 5000);
-
     setInterval(async () => {
         try {
             if (!currentConnection || currentConnection.state.status === VoiceConnectionStatus.Disconnected || currentConnection.state.status === VoiceConnectionStatus.Destroyed) {
@@ -652,7 +582,6 @@ client.once("ready", async () => {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // أمر /clear
     if (interaction.commandName === 'clear') {
         const userId = interaction.user.id;
 
@@ -686,7 +615,6 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // أمر /sendrules
     if (interaction.commandName === 'sendrules') {
         try {
             const authorized = await isAuthorizedFast(interaction.guild, interaction.user.id);

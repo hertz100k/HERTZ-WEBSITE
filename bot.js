@@ -67,14 +67,21 @@ const PORT = process.env.PORT || 3000;
 const TARGET_HOURS = 1000;
 let voiceSessionStartTime = null;
 
-const movedMessages = new Set();
-const processingLocks = new Set();
-const sourceMessagesDeleted = new Set();
-const vaultMessages = new Set();
-const welcomedMembers = new Set();
-const leftMembers = new Set();
-const welcomeProcessing = new Set();
-const leaveProcessing = new Set();
+// ============================================================
+// ✅ أنظمة منع التكرار (محسّنة)
+// ============================================================
+// منع تكرار النقل
+const movedMessages = new Set();          // رسائل اتنقلت خلاص
+const processingLocks = new Set();        // رسائل بتتعالج حاليًا
+const sourceMessagesDeleted = new Set();  // رسائل المصدر اتحذفت
+const vaultMessages = new Set();          // رسائل موجودة في المخزن
+
+// منع تكرار الترحيب والمغادرة
+const welcomedMembers = new Set();        // أعضاء اترحبوا خلاص
+const leftMembers = new Set();            // أعضاء غادروا خلاص
+const welcomeProcessing = new Set();      // أعضاء بيتترحبوا حاليًا
+const leaveProcessing = new Set();        // أعضاء بيتم تسجيل مغادرتهم حاليًا
+
 const clearProcessing = new Set();
 const rulesProcessing = new Set();
 const linkSpamMap = new Map();
@@ -85,7 +92,7 @@ console.log('   DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? '✅' : '❌');
 console.log('   SUPABASE_URL:', process.env.SUPABASE_URL ? '✅' : '⚠️');
 console.log('   SUPABASE_KEY:', process.env.SUPABASE_KEY ? '✅' : '⚠️');
 
-// ✅ تعريف client (أهم سطر كان ناقص!)
+// ✅ تعريف client
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -157,46 +164,95 @@ async function deployRules(guild, silent = false) {
     return { success: true, message: '✅ تم نشر القوانين بنجاح!' };
 }
 
+// ============================================================
+// ✅ دالة الترحيب (مع منع تكرار قوي)
+// ============================================================
 async function sendWelcomeMessage(guild, member) {
     const memberId = member.id;
-    if (welcomedMembers.has(memberId)) return;
-    if (welcomeProcessing.has(memberId)) return;
+
+    // ✅ منع تكرار صارم
+    if (welcomedMembers.has(memberId)) {
+        console.log(`⏭️ [WELCOME] تم تخطي ${member.user.tag} (اترحب بيه قبل كده)`);
+        return;
+    }
+    if (welcomeProcessing.has(memberId)) {
+        console.log(`⏭️ [WELCOME] تم تخطي ${member.user.tag} (قيد المعالجة)`);
+        return;
+    }
     if (member.user.bot) return;
+
+    // ✅ علامة فورية قبل أي async
     welcomeProcessing.add(memberId);
     welcomedMembers.add(memberId);
     leftMembers.delete(memberId);
+
     try {
+        console.log(`\n🎉 [WELCOME] بدء الترحيب بـ ${member.user.tag}`);
+
         try {
             const role = guild.roles.cache.get(AUTO_ROLE_ID);
             if (role) await member.roles.add(role, 'رول تلقائي');
         } catch (e) { console.error(`❌ [AUTO ROLE]`, e.message); }
+
         const welcomeChannel = await guild.channels.fetch(WELCOME_CHANNEL_ID).catch(() => null);
-        if (!welcomeChannel) { welcomedMembers.delete(memberId); return; }
+        if (!welcomeChannel) {
+            welcomedMembers.delete(memberId);
+            return;
+        }
+
         const embed = new EmbedBuilder()
             .setColor(0x5865F2).setTitle(`مرحباً بك في السيرفر`)
             .setDescription(`أهلاً بك يا <@${memberId}> في سيرفر **${SERVER_NAME}**`)
             .setImage(WELCOME_IMAGE_URL)
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
             .setTimestamp();
+
         await welcomeChannel.send({ embeds: [embed] });
         console.log(`✅ [WELCOME] ${member.user.tag}`);
-    } catch (e) { console.error(`❌ [WELCOME]`, e); welcomedMembers.delete(memberId); }
-    finally { welcomeProcessing.delete(memberId); }
+    } catch (e) {
+        console.error(`❌ [WELCOME]`, e);
+        welcomedMembers.delete(memberId);
+    } finally {
+        welcomeProcessing.delete(memberId);
+    }
 }
 
+// ============================================================
+// ✅ دالة المغادرة (مع منع تكرار قوي)
+// ============================================================
 async function sendLeaveMessage(guild, memberId, memberTag) {
-    if (leftMembers.has(memberId)) return;
-    if (leaveProcessing.has(memberId)) return;
+    // ✅ منع تكرار صارم
+    if (leftMembers.has(memberId)) {
+        console.log(`⏭️ [LEAVE] تم تخطي ${memberTag} (اتسجل قبل كده)`);
+        return;
+    }
+    if (leaveProcessing.has(memberId)) {
+        console.log(`⏭️ [LEAVE] تم تخطي ${memberTag} (قيد المعالجة)`);
+        return;
+    }
+
+    // ✅ علامة فورية قبل أي async
     leaveProcessing.add(memberId);
     leftMembers.add(memberId);
     welcomedMembers.delete(memberId);
+
     try {
+        console.log(`\n🚪 [LEAVE] بدء المغادرة لـ ${memberTag}`);
+
         const leaveChannel = await guild.channels.fetch(LEAVE_CHANNEL_ID).catch(() => null);
-        if (!leaveChannel) { leftMembers.delete(memberId); return; }
+        if (!leaveChannel) {
+            leftMembers.delete(memberId);
+            return;
+        }
+
         await leaveChannel.send({ content: `**غادر** <@${memberId}>` });
         console.log(`✅ [LEAVE] ${memberTag}`);
-    } catch (e) { console.error(`❌ [LEAVE]`, e); leftMembers.delete(memberId); }
-    finally { leaveProcessing.delete(memberId); }
+    } catch (e) {
+        console.error(`❌ [LEAVE]`, e);
+        leftMembers.delete(memberId);
+    } finally {
+        leaveProcessing.delete(memberId);
+    }
 }
 
 client.on('guildMemberAdd', async (member) => {
@@ -209,6 +265,9 @@ client.on('guildMemberRemove', async (member) => {
     await sendLeaveMessage(member.guild, member.id, member.user.tag);
 });
 
+// ============================================================
+// Polling (بس بيسجل الأعضاء الجدد)
+// ============================================================
 let knownMembers = new Set();
 let pollCount = 0;
 let isFirstPoll = true;
@@ -227,26 +286,24 @@ async function pollMembers() {
             console.log(`📋 [POLL #${pollCount}] تم تسجيل ${knownMembers.size} عضو.`);
             isFirstPoll = false; isPolling = false; return;
         }
+        // ✅ نسجل الأعضاء الجدد بس من غير ما نبعت ترحيب (عشان guildMemberAdd هو المسؤول)
         for (const [id, member] of members) {
             if (!knownMembers.has(id)) {
                 knownMembers.add(id);
-                if (member.user.bot || welcomedMembers.has(id) || welcomeProcessing.has(id)) continue;
-                await sendWelcomeMessage(guild, member);
             }
         }
+        // ✅ نسجل اللي خرجوا بس من غير ما نبعت مغادرة
         for (const id of knownMembers) {
             if (!members.has(id)) {
                 knownMembers.delete(id);
-                if (leftMembers.has(id) || leaveProcessing.has(id)) continue;
-                try {
-                    const user = await client.users.fetch(id).catch(() => null);
-                    if (user && !user.bot) await sendLeaveMessage(guild, id, user.tag);
-                } catch (e) {}
             }
         }
     } catch (e) {} finally { isPolling = false; }
 }
 
+// ============================================================
+// ✅ حماية الروابط + السبام (زي ما هي)
+// ============================================================
 client.on('messageCreate', async (message) => {
     if (message.author.bot || !message.guild) return;
     const isAdmin = await isAuthorizedFast(message.guild, message.author.id);
@@ -299,43 +356,84 @@ client.on('messageCreate', async (message) => {
     } catch (e) { console.error('❌', e.message); }
 });
 
+// ============================================================
+// ✅ نقل الرسائل للمخزن (مع منع تكرار قوي)
+// ============================================================
 client.on('messageReactionAdd', async (reaction, user) => {
     if (user.bot) return;
     if (reaction.partial) { try { await reaction.fetch(); } catch (e) { return; } }
     const message = reaction.message;
     if (message.partial) { try { await message.fetch(); } catch (e) { return; } }
     if (!message.guild) return;
+
     const messageId = message.id;
-    if (movedMessages.has(messageId) || sourceMessagesDeleted.has(messageId) || processingLocks.has(messageId)) return;
+
+    // ✅ منع تكرار 4 طبقات
+    if (movedMessages.has(messageId)) return;
+    if (sourceMessagesDeleted.has(messageId)) return;
+    if (processingLocks.has(messageId)) return;
+
+    // ✅ قفل فوري
     processingLocks.add(messageId);
+
     try {
         const isTargetChannel = message.channelId === SUPPORT_CHANNEL_ID || message.channelId === ORDER_CHANNEL_ID || message.channelId === CANCEL_CHANNEL_ID;
         if (!isTargetChannel) { processingLocks.delete(messageId); return; }
+
         const authorized = await isAuthorizedFast(message.guild, user.id);
         if (!authorized) { processingLocks.delete(messageId); return; }
+
         if (reaction.emoji.name !== '✅') { processingLocks.delete(messageId); return; }
+
         let targetVaultId = null;
         if (message.channelId === SUPPORT_CHANNEL_ID) targetVaultId = TRASH_SUPPORT_CHANNEL_ID;
         else if (message.channelId === ORDER_CHANNEL_ID) targetVaultId = TRASH_ORDER_CHANNEL_ID;
         else if (message.channelId === CANCEL_CHANNEL_ID) targetVaultId = TRASH_CANCEL_CHANNEL_ID;
+
         if (!targetVaultId) { processingLocks.delete(messageId); return; }
+
         const vaultKey = `${targetVaultId}:${messageId}`;
         if (vaultMessages.has(vaultKey)) { processingLocks.delete(messageId); return; }
-        movedMessages.add(messageId); vaultMessages.add(vaultKey);
+
+        // ✅ علامة النقل BEFORE أي async
+        movedMessages.add(messageId);
+        vaultMessages.add(vaultKey);
+
         try {
             const targetVault = await client.channels.fetch(targetVaultId);
-            if (!targetVault) { movedMessages.delete(messageId); vaultMessages.delete(vaultKey); processingLocks.delete(messageId); return; }
+            if (!targetVault) {
+                movedMessages.delete(messageId);
+                vaultMessages.delete(vaultKey);
+                processingLocks.delete(messageId);
+                return;
+            }
+
             const msgContent = message.content || "";
             const msgEmbeds = message.embeds || [];
             const msgFiles = message.attachments ? Array.from(message.attachments.values()).map(att => att.url) : [];
-            await targetVault.send({ content: `👤 **بواسطة:** <@${user.id}>\n📜 **المحتوى:**\n${msgContent !== "" ? msgContent : "**[مرفقات]**"}`, embeds: msgEmbeds, files: msgFiles });
+
+            await targetVault.send({
+                content: `👤 **بواسطة:** <@${user.id}>\n📜 **المحتوى:**\n${msgContent !== "" ? msgContent : "**[مرفقات]**"}`,
+                embeds: msgEmbeds,
+                files: msgFiles
+            });
+
             sourceMessagesDeleted.add(messageId);
             await message.delete().catch(() => {});
-            console.log(`✅ [MOVE] ${messageId}`);
-        } catch (e) { movedMessages.delete(messageId); vaultMessages.delete(vaultKey); }
-    } finally { processingLocks.delete(messageId); }
+            console.log(`✅ [MOVE] ${messageId} → ${targetVaultId}`);
+        } catch (e) {
+            console.error(`❌ [MOVE]`, e.message);
+            movedMessages.delete(messageId);
+            vaultMessages.delete(vaultKey);
+        }
+    } finally {
+        processingLocks.delete(messageId);
+    }
 });
 
+// ============================================================
+// نظام التيكت فويس
+// ============================================================
 client.on('channelCreate', async (channel) => {
     try {
         if (!channel.guild) return;
@@ -358,6 +456,9 @@ client.on('channelDelete', async (channel) => {
     } catch (e) {}
 });
 
+// ============================================================
+// الفويس
+// ============================================================
 async function connectToVoiceChannel() {
     try {
         const channel = await client.channels.fetch(TARGET_VOICE_CHANNEL_ID);
@@ -373,6 +474,9 @@ async function connectToVoiceChannel() {
     } catch (e) { setTimeout(connectToVoiceChannel, 1000); }
 }
 
+// ============================================================
+// Ready Event
+// ============================================================
 client.once("ready", async () => {
     console.log(`\n============================================`);
     console.log(`✅ HERTZ ADMIN BOT: ${client.user.tag}`);
@@ -402,22 +506,59 @@ client.once("ready", async () => {
     }, 10 * 1000);
 });
 
+// ============================================================
+// ✅ أمر /clear (مصلح)
+// ============================================================
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
+
     if (interaction.commandName === 'clear') {
         const userId = interaction.user.id;
-        if (clearProcessing.has(userId)) { await interaction.reply({ content: '⏳', ephemeral: true }); return; }
+
+        if (clearProcessing.has(userId)) {
+            await interaction.reply({ content: '⏳ في عملية مسح جارية بالفعل.', ephemeral: true });
+            return;
+        }
+
         clearProcessing.add(userId);
+
         try {
             const authorized = await isAuthorizedFast(interaction.guild, userId);
-            if (!authorized) { await interaction.reply({ content: '❌ للإدارة فقط!', ephemeral: true }); clearProcessing.delete(userId); return; }
+            if (!authorized) {
+                await interaction.reply({ content: '❌ للإدارة فقط!', ephemeral: true });
+                clearProcessing.delete(userId);
+                return;
+            }
+
             const count = interaction.options.getInteger('count');
+
+            // ✅ نتحقق إن القناة نصية
+            if (!interaction.channel || !interaction.channel.isTextBased()) {
+                await interaction.reply({ content: '❌ الأمر ده في الرومات النصية بس!', ephemeral: true });
+                clearProcessing.delete(userId);
+                return;
+            }
+
             await interaction.deferReply({ ephemeral: true });
+
+            // ✅ حذف الرسائل
             const deleted = await interaction.channel.bulkDelete(count, true);
-            await interaction.editReply({ content: `✅ تم حذف **${deleted.size}** رسالة.` });
-        } catch (e) { try { await interaction.editReply({ content: '❌ خطأ.' }); } catch (err) {} }
-        finally { clearProcessing.delete(userId); }
+
+            if (deleted.size === 0) {
+                await interaction.editReply({ content: '⚠️ مفيش رسائل اتحذفت (ممكن تكون أقدم من 14 يوم أو مفيش رسائل).' });
+            } else {
+                await interaction.editReply({ content: `✅ تم حذف **${deleted.size}** رسالة بنجاح.` });
+            }
+        } catch (e) {
+            console.error('❌ [CLEAR]', e);
+            try {
+                await interaction.editReply({ content: `❌ خطأ: ${e.message}` });
+            } catch (err) {}
+        } finally {
+            clearProcessing.delete(userId);
+        }
     }
+
     if (interaction.commandName === 'sendrules') {
         const userId = interaction.user.id;
         if (rulesProcessing.has(userId)) { await interaction.reply({ content: '⏳', ephemeral: true }); return; }

@@ -37,7 +37,7 @@ const TEXT_SPAM_THRESHOLD = 5;
 const TEXT_SPAM_TIMEOUT = 10 * 60 * 1000;
 
 // ============================================================
-// 🗄️ التخزين الدائم (المستوى 1)
+// 🗄️ التخزين الدائم
 // ============================================================
 const DATA_FILE = path.join(__dirname, "bot_persistent_data.json");
 
@@ -83,19 +83,21 @@ function savePersistentData() {
     }
 }
 
-// حفظ تلقائي كل 10 ثواني
 setInterval(savePersistentData, 10000);
-
-// حفظ قبل الخروج
 process.on('SIGTERM', () => { savePersistentData(); process.exit(0); });
 process.on('SIGINT', () => { savePersistentData(); process.exit(0); });
 
 // ============================================================
-// 🔒 الأقفال الفورية (المستوى 3)
+// 🔒 الأقفال
 // ============================================================
 const inFlightWelcomes = new Set();
 const inFlightLeaves = new Set();
 const inFlightMoves = new Set();
+
+// ✅ كولداون 60 ثانية (يمنع التكرار في نفس الدقيقة)
+const welcomeCooldown = new Map();
+const leaveCooldown = new Map();
+const COOLDOWN_MS = 60 * 1000;
 
 const clearProcessing = new Set();
 const rulesProcessing = new Set();
@@ -226,34 +228,41 @@ async function deployRules(guild, silent = false) {
 }
 
 // ============================================================
-// 🔥 الترحيب — 5 مستويات حماية
+// 🔥 الترحيب — دالة واحدة تمنع التكرار 100%
 // ============================================================
 async function sendWelcomeMessage(guild, member) {
     const memberId = member.id;
 
-    // 🛡️ المستوى 1: تجاهل البوتات
     if (member.user.bot) return;
 
-    // 🛡️ المستوى 2: فحص التخزين الدائم (لو اترحب بيه قبل كده)
-    if (persistentData.welcomed.has(memberId)) {
-        console.log(`⏭️ [WELCOME-SKIP] ${member.user.tag} (موجود في التخزين)`);
-        return;
-    }
-
-    // 🛡️ المستوى 3: فحص القفل الفوري
+    // 🛡️ 1: فحص القفل الفوري (أهم طبقة - لازم تكون الأولى)
     if (inFlightWelcomes.has(memberId)) {
         console.log(`⏭️ [WELCOME-SKIP] ${member.user.tag} (قيد المعالجة)`);
         return;
     }
 
-    // 🛡️ المستوى 4: قفل فوري + حفظ فوري (قبل أي async)
+    // 🛡️ 2: فحص الكولداون 60 ثانية
+    const lastTime = welcomeCooldown.get(memberId);
+    if (lastTime && (Date.now() - lastTime) < COOLDOWN_MS) {
+        console.log(`⏭️ [WELCOME-SKIP] ${member.user.tag} (كولداون)`);
+        return;
+    }
+
+    // 🛡️ 3: فحص التخزين الدائم
+    if (persistentData.welcomed.has(memberId)) {
+        console.log(`⏭️ [WELCOME-SKIP] ${member.user.tag} (في التخزين)`);
+        return;
+    }
+
+    // ✅ قفل فوري + علامات كلها قبل أي await
     inFlightWelcomes.add(memberId);
+    welcomeCooldown.set(memberId, Date.now());
     persistentData.welcomed.add(memberId);
     persistentData.left.delete(memberId);
-    savePersistentData(); // حفظ فوري
+    savePersistentData();
 
     try {
-        console.log(`\n🎉 [WELCOME] بدء الترحيب بـ ${member.user.tag}`);
+        console.log(`\n🎉 [WELCOME] ${member.user.tag}`);
 
         try {
             const role = guild.roles.cache.get(AUTO_ROLE_ID);
@@ -261,10 +270,10 @@ async function sendWelcomeMessage(guild, member) {
         } catch (e) { console.error(`❌ [AUTO ROLE]`, e.message); }
 
         const welcomeChannel = await guild.channels.fetch(WELCOME_CHANNEL_ID).catch(() => null);
-        if (!welcomeChannel) return;
-
-        // 🛡️ المستوى 5: فحص أخير قبل الإرسال
-        if (!persistentData.welcomed.has(memberId)) return;
+        if (!welcomeChannel) {
+            inFlightWelcomes.delete(memberId);
+            return;
+        }
 
         const embed = new EmbedBuilder()
             .setColor(0x5865F2).setTitle(`مرحباً بك في السيرفر`)
@@ -277,8 +286,8 @@ async function sendWelcomeMessage(guild, member) {
         console.log(`✅ [WELCOME] ${member.user.tag}`);
     } catch (e) {
         console.error(`❌ [WELCOME]`, e);
-        // ❌ لو فشل الإرسال، شيل العلامة عشان نحاول تاني
         persistentData.welcomed.delete(memberId);
+        welcomeCooldown.delete(memberId);
         savePersistentData();
     } finally {
         inFlightWelcomes.delete(memberId);
@@ -286,41 +295,50 @@ async function sendWelcomeMessage(guild, member) {
 }
 
 // ============================================================
-// 🔥 المغادرة — 5 مستويات حماية
+// 🔥 المغادرة — دالة واحدة تمنع التكرار 100%
 // ============================================================
 async function sendLeaveMessage(guild, memberId, memberTag) {
-    // 🛡️ المستوى 1: فحص التخزين الدائم
-    if (persistentData.left.has(memberId)) {
-        console.log(`⏭️ [LEAVE-SKIP] ${memberTag} (موجود في التخزين)`);
-        return;
-    }
-
-    // 🛡️ المستوى 2: فحص القفل الفوري
+    // 🛡️ 1: فحص القفل الفوري (أهم طبقة)
     if (inFlightLeaves.has(memberId)) {
         console.log(`⏭️ [LEAVE-SKIP] ${memberTag} (قيد المعالجة)`);
         return;
     }
 
-    // 🛡️ المستوى 3: قفل فوري + حفظ فوري
+    // 🛡️ 2: فحص الكولداون 60 ثانية
+    const lastTime = leaveCooldown.get(memberId);
+    if (lastTime && (Date.now() - lastTime) < COOLDOWN_MS) {
+        console.log(`⏭️ [LEAVE-SKIP] ${memberTag} (كولداون)`);
+        return;
+    }
+
+    // 🛡️ 3: فحص التخزين الدائم
+    if (persistentData.left.has(memberId)) {
+        console.log(`⏭️ [LEAVE-SKIP] ${memberTag} (في التخزين)`);
+        return;
+    }
+
+    // ✅ قفل فوري + علامات كلها قبل أي await
     inFlightLeaves.add(memberId);
+    leaveCooldown.set(memberId, Date.now());
     persistentData.left.add(memberId);
     persistentData.welcomed.delete(memberId);
-    savePersistentData(); // حفظ فوري
+    savePersistentData();
 
     try {
-        console.log(`\n🚪 [LEAVE] بدء المغادرة لـ ${memberTag}`);
+        console.log(`\n🚪 [LEAVE] ${memberTag}`);
 
         const leaveChannel = await guild.channels.fetch(LEAVE_CHANNEL_ID).catch(() => null);
-        if (!leaveChannel) return;
-
-        // 🛡️ المستوى 4: فحص أخير قبل الإرسال
-        if (!persistentData.left.has(memberId)) return;
+        if (!leaveChannel) {
+            inFlightLeaves.delete(memberId);
+            return;
+        }
 
         await leaveChannel.send({ content: `**غادر** <@${memberId}>` });
         console.log(`✅ [LEAVE] ${memberTag}`);
     } catch (e) {
         console.error(`❌ [LEAVE]`, e);
         persistentData.left.delete(memberId);
+        leaveCooldown.delete(memberId);
         savePersistentData();
     } finally {
         inFlightLeaves.delete(memberId);
@@ -328,7 +346,7 @@ async function sendLeaveMessage(guild, memberId, memberTag) {
 }
 
 // ============================================================
-// ✅ الأحداث الرسمية (مفيش Polling)
+// ✅ الأحداث الرسمية
 // ============================================================
 client.on('guildMemberAdd', async (member) => {
     console.log(`\n🔔 [EVENT] guildMemberAdd: ${member.user.tag}`);
@@ -396,7 +414,7 @@ client.on('messageCreate', async (message) => {
 });
 
 // ============================================================
-// 🔥 نقل الرسائل للمخزن — 5 مستويات حماية
+// 🔥 نقل الرسائل للمخزن
 // ============================================================
 client.on('messageReactionAdd', async (reaction, user) => {
     if (user.bot) return;
@@ -407,13 +425,9 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     const messageId = message.id;
 
-    // 🛡️ المستوى 1: فحص التخزين الدائم
+    if (inFlightMoves.has(messageId)) return;
     if (persistentData.moved.has(messageId)) return;
 
-    // 🛡️ المستوى 2: فحص القفل الفوري
-    if (inFlightMoves.has(messageId)) return;
-
-    // 🛡️ المستوى 3: قفل فوري
     inFlightMoves.add(messageId);
 
     try {
@@ -435,7 +449,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
         const vaultKey = `${targetVaultId}:${messageId}`;
         if (persistentData.vault.has(vaultKey)) { inFlightMoves.delete(messageId); return; }
 
-        // 🛡️ المستوى 4: حفظ فوري
         persistentData.moved.add(messageId);
         persistentData.vault.add(vaultKey);
         savePersistentData();
@@ -449,9 +462,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
                 inFlightMoves.delete(messageId);
                 return;
             }
-
-            // 🛡️ المستوى 5: فحص أخير قبل الإرسال
-            if (!persistentData.moved.has(messageId)) return;
 
             const msgContent = message.content || "";
             const msgEmbeds = message.embeds || [];
@@ -520,7 +530,7 @@ async function connectToVoiceChannel() {
 }
 
 // ============================================================
-// Ready Event
+// Ready
 // ============================================================
 client.once("ready", async () => {
     console.log(`\n============================================`);

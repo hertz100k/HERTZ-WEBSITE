@@ -17,7 +17,6 @@ const TRASH_SUPPORT_CHANNEL_ID = "1549529917757325322";
 const TRASH_ORDER_CHANNEL_ID = "1549530385908506694";
 const TRASH_CANCEL_CHANNEL_ID = "1549530638627897385";
 
-// ✅ آي دي قناة الفويس اللي البوت يقعد فيها 24 ساعة
 const TARGET_VOICE_CHANNEL_ID = "1550379501714808893";
 const TICKET_VOICE_CHANNEL_ID = "1550631251130581072";
 const AUTHORIZED_ROLE_ID = "1550641497173659778";
@@ -118,22 +117,27 @@ async function isAuthorizedFast(guild, userId) {
 }
 
 // ============================================================
-// دالة إرسال رسالة الترحيب (منع تكرار 4 طبقات)
+// 🔥 دالة الترحيب — رسالة واحدة فقط (مضمون 100%)
 // ============================================================
 async function sendWelcomeMessage(guild, member) {
     const memberId = member.id;
 
-    if (welcomedMembers.has(memberId)) return;
-    if (welcomeProcessing.has(memberId)) return;
+    // تجاهل البوتات
     if (member.user.bot) return;
 
+    // 🛡️ الطبقة 1: لو اترحب بيه قبل كده أو قيد المعالجة — ارجع فورًا
+    if (welcomedMembers.has(memberId)) return;
+    if (welcomeProcessing.has(memberId)) return;
+
+    // 🛡️ الطبقة 2: قفل فوري (قبل أي await)
     welcomeProcessing.add(memberId);
     welcomedMembers.add(memberId);
     leftMembers.delete(memberId);
 
     try {
-        console.log(`\n🎉 [WELCOME START] بدء الترحيب بـ ${member.user.tag}`);
+        console.log(`\n🎉 [WELCOME] بدء الترحيب بـ ${member.user.tag}`);
 
+        // إعطاء الرول التلقائي
         try {
             const role = guild.roles.cache.get(AUTO_ROLE_ID);
             if (role) {
@@ -240,10 +244,21 @@ async function sendLeaveMessage(guild, memberId, memberTag) {
 }
 
 // ============================================================
-// الأحداث الأساسية
+// 🔥 الأحداث الأساسية — منع تكرار على مستوى الحدث
 // ============================================================
+// ✅ مجموعة لتتبع الأحداث اللي اتعملت خلاص (لمنع التكرار نهائيًا)
+const welcomeEventLock = new Set();
+
 client.on('guildMemberAdd', async (member) => {
     console.log(`\n🔔 [EVENT] guildMemberAdd: ${member.user.tag}`);
+
+    // 🛡️ قفل على مستوى الحدث — لو اتنادى قبل كده، ارجع فورًا
+    if (welcomeEventLock.has(member.id)) {
+        console.log(`⏭️ [EVENT-SKIP] ${member.user.tag} (الحدث اتنادى قبل كده)`);
+        return;
+    }
+    welcomeEventLock.add(member.id);
+
     await sendWelcomeMessage(member.guild, member);
 });
 
@@ -418,24 +433,19 @@ client.on('messageReactionAdd', async (reaction, user) => {
 });
 
 // ============================================================
-// ✅ نظام حماية الروابط + نشر القوانين (المدمج من الملف الثاني)
+// ✅ نظام حماية الروابط + نشر القوانين
 // ============================================================
 client.on('messageCreate', async (message) => {
-    // تجاهل رسائل البوتات أو الرسائل اللي مش في سيرفر
     if (message.author.bot || !message.guild) return;
 
-    // ==========================================
-    // 1. نظام حماية الروابط وحظرها تلقائياً
-    // ==========================================
+    // 1. حماية الروابط
     const linkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gi;
 
     if (linkRegex.test(message.content)) {
-        // استثناء الأدمنز من حماية الروابط (اختياري)
         const isAdmin = await isAuthorizedFast(message.guild, message.author.id);
         if (isAdmin) return;
 
         try {
-            // حذف الرابط فوراً
             await message.delete();
 
             const userId = message.author.id;
@@ -443,7 +453,6 @@ client.on('messageCreate', async (message) => {
 
             let userRecord = linkSpamMap.get(userId) || { count: 0, lastTime: currentTime };
 
-            // إذا أرسل رابطاً خلال أقل من دقيقة، نحسبه تكراراً
             if (currentTime - userRecord.lastTime < 60000) {
                 userRecord.count += 1;
             } else {
@@ -452,7 +461,6 @@ client.on('messageCreate', async (message) => {
             userRecord.lastTime = currentTime;
             linkSpamMap.set(userId, userRecord);
 
-            // إذا كرر الروابط، إعطاؤه تايم أوت ساعة
             if (userRecord.count >= 2) {
                 try {
                     const member = await message.guild.members.fetch(userId);
@@ -476,18 +484,14 @@ client.on('messageCreate', async (message) => {
         }
     }
 
-    // ==========================================
-    // 2. نظام نشر القوانين من ملفات التكست
-    // ==========================================
+    // 2. نشر القوانين
     if (message.content === '!sendrules') {
         try {
-            // التحقق من الصلاحيات
             const isAdmin = await isAuthorizedFast(message.guild, message.author.id);
             if (!isAdmin) {
                 return message.reply('❌ عذراً، هذا الأمر مخصص للإدارة فقط!');
             }
 
-            // قراءة ملفات القوانين من نفس المجلد
             let generalRules, adminRules;
 
             try {
@@ -502,7 +506,6 @@ client.on('messageCreate', async (message) => {
                 return message.reply('❌ ملف `rules-admin.txt` غير موجود في مجلد البوت!');
             }
 
-            // إرسال القوانين العامة
             const generalChannel = message.guild.channels.cache.get(GENERAL_RULES_CHANNEL_ID);
             if (generalChannel) {
                 await generalChannel.send(generalRules);
@@ -510,7 +513,6 @@ client.on('messageCreate', async (message) => {
                 return message.reply('❌ لم أستطع العثور على روم القوانين العامة، تأكد من الآي دي!');
             }
 
-            // إرسال قوانين الإدارة
             const adminChannel = message.guild.channels.cache.get(ADMIN_RULES_CHANNEL_ID);
             if (adminChannel) {
                 await adminChannel.send(adminRules);
@@ -563,7 +565,7 @@ client.on('channelDelete', async (channel) => {
 });
 
 // ============================================================
-// ✅ الاتصال الدائم بالفويس (24 ساعة بدون فصل)
+// الاتصال الدائم بالفويس
 // ============================================================
 async function connectToVoiceChannel() {
     try {
@@ -574,7 +576,6 @@ async function connectToVoiceChannel() {
             return;
         }
 
-        // لو فيه اتصال قديم، اقطعه
         if (currentConnection) {
             try { currentConnection.destroy(); } catch (e) {}
             currentConnection = null;
@@ -663,17 +664,14 @@ client.once("ready", async () => {
         console.error('❌ خطأ في تسجيل أوامر السلاش:', error);
     }
 
-    // ✅ الاتصال بالفويس
     connectToVoiceChannel();
 
-    // ✅ مراقبة الأعضاء
     console.log('🔄 [POLL] جاري تشغيل مراقبة الأعضاء (كل 30 ثانية)...');
     setTimeout(async () => {
         await pollMembers();
         setInterval(pollMembers, 30000);
     }, 5000);
 
-    // ✅ مراقبة الاتصال بالفويس كل 10 ثواني
     setInterval(async () => {
         try {
             if (!currentConnection || currentConnection.state.status === VoiceConnectionStatus.Disconnected || currentConnection.state.status === VoiceConnectionStatus.Destroyed) {
@@ -692,9 +690,7 @@ client.once("ready", async () => {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    // ==========================================
     // أمر /clear
-    // ==========================================
     if (interaction.commandName === 'clear') {
         const userId = interaction.user.id;
 
@@ -728,9 +724,7 @@ client.on('interactionCreate', async interaction => {
         }
     }
 
-    // ==========================================
     // أمر /sendrules
-    // ==========================================
     if (interaction.commandName === 'sendrules') {
         try {
             const authorized = await isAuthorizedFast(interaction.guild, interaction.user.id);

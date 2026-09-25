@@ -35,6 +35,18 @@ const RULES_IMAGE_URL = "https://raw.githubusercontent.com/hertz100k/HERTZ-WEBSI
 const ADMIN_RULES_IMAGE_URL = RULES_IMAGE_URL;
 
 // ============================================================
+// ✅ إعدادات الحماية
+// ============================================================
+const LINK_WARNING_DURATION = 5000;        // 5 ثواني
+const LINK_TIMEOUT_DURATION = 60 * 60 * 1000; // ساعة
+const LINK_SPAM_WINDOW = 60 * 1000;        // دقيقة
+const LINK_SPAM_THRESHOLD = 2;             // مرتين خلال دقيقة = تايم أوت
+
+const TEXT_SPAM_WINDOW = 5000;             // 5 ثواني
+const TEXT_SPAM_THRESHOLD = 5;             // 5 رسائل خلال 5 ثواني
+const TEXT_SPAM_TIMEOUT = 10 * 60 * 1000;  // 10 دقايق
+
+// ============================================================
 // ✅ القوانين العامة
 // ============================================================
 const GENERAL_RULES_TEXT = 
@@ -94,9 +106,10 @@ const leaveProcessing = new Set();
 const clearProcessing = new Set();
 const rulesProcessing = new Set();
 
-// ============================================================
-// ✅ Supabase اختياري (لو المفاتيح مش موجودة، البوت يشتغل عادي)
-// ============================================================
+// ✅ أنظمة الحماية
+const linkSpamMap = new Map();   // تتبع تكرار اللينكات
+const textSpamMap = new Map();   // تتبع تكرار الرسائل النصية
+
 console.log('\n🔍 [ENV CHECK] فحص متغيرات البيئة:');
 console.log('   DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? '✅ موجود' : '❌ مفقود');
 console.log('   SUPABASE_URL:', process.env.SUPABASE_URL ? '✅ موجود' : '⚠️ مفقود (اختياري)');
@@ -436,6 +449,112 @@ async function pollMembers() {
 }
 
 // ============================================================
+// ✅ نظام حماية الروابط + مكافحة السبام
+// ============================================================
+client.on('messageCreate', async (message) => {
+    // تجاهل البوتات والرسائل الخاصة
+    if (message.author.bot) return;
+    if (!message.guild) return;
+
+    // استثناء الأدمنز من الحماية
+    const isAdmin = await isAuthorizedFast(message.guild, message.author.id);
+    if (isAdmin) return;
+
+    const userId = message.author.id;
+    const currentTime = Date.now();
+
+    // ==========================================
+    // 1. نظام حماية الروابط
+    // ==========================================
+    const linkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gi;
+
+    if (linkRegex.test(message.content)) {
+        try {
+            // حذف الرسالة
+            await message.delete().catch(() => {});
+
+            // تتبع التكرار
+            let userRecord = linkSpamMap.get(userId) || { count: 0, lastTime: currentTime };
+
+            if (currentTime - userRecord.lastTime < LINK_SPAM_WINDOW) {
+                userRecord.count += 1;
+            } else {
+                userRecord.count = 1;
+            }
+            userRecord.lastTime = currentTime;
+            linkSpamMap.set(userId, userRecord);
+
+            console.log(`🔗 [LINK] ${message.author.tag} بعت لينك (تكرار: ${userRecord.count})`);
+
+            // لو كرر → تايم أوت ساعة
+            if (userRecord.count >= LINK_SPAM_THRESHOLD) {
+                try {
+                    const member = await message.guild.members.fetch(userId);
+                    await member.timeout(LINK_TIMEOUT_DURATION, 'إرسال روابط متكررة ومخالفة لقوانين السيرفر');
+                    linkSpamMap.delete(userId);
+
+                    const warningMsg = await message.channel.send(
+                        `⚠️ ${message.author} تم إعطاؤك **تايم أوت لمدة ساعة** بسبب إرسال الروابط المتكررة.`
+                    );
+                    setTimeout(() => warningMsg.delete().catch(() => {}), LINK_WARNING_DURATION);
+                    console.log(`⏱️ [LINK TIMEOUT] تم إعطاء تايم أوت لـ ${message.author.tag}`);
+                    return;
+                } catch (err) {
+                    console.error('❌ فشل إعطاء تايم أوت للعضو:', err.message);
+                }
+            }
+
+            // تحذير أول (يفضل 5 ثواني)
+            const firstWarning = await message.channel.send(
+                `⚠️ ${message.author} ممنوع نشر الروابط في السيرفر! التكرار سيؤدي إلى تايم أوت.`
+            );
+            setTimeout(() => firstWarning.delete().catch(() => {}), LINK_WARNING_DURATION);
+            return;
+        } catch (error) {
+            console.error('❌ خطأ أثناء حذف الرابط:', error.message);
+        }
+    }
+
+    // ==========================================
+    // 2. نظام مكافحة السبام النصي
+    // ==========================================
+    try {
+        let textRecord = textSpamMap.get(userId) || { timestamps: [] };
+
+        // شيل الطوابع القديمة (أقدم من 5 ثواني)
+        textRecord.timestamps = textRecord.timestamps.filter(
+            ts => currentTime - ts < TEXT_SPAM_WINDOW
+        );
+
+        // ضيف الطابع الحالي
+        textRecord.timestamps.push(currentTime);
+        textSpamMap.set(userId, textRecord);
+
+        // لو تعدى الحد → تايم أوت
+        if (textRecord.timestamps.length >= TEXT_SPAM_THRESHOLD) {
+            try {
+                const member = await message.guild.members.fetch(userId);
+                await member.timeout(TEXT_SPAM_TIMEOUT, 'إرسال رسائل سبام متكررة');
+
+                textSpamMap.delete(userId);
+
+                const warningMsg = await message.channel.send(
+                    `⚠️ ${message.author} تم إعطاؤك **تايم أوت لمدة 10 دقائق** بسبب السبام المتكرر.`
+                );
+                setTimeout(() => warningMsg.delete().catch(() => {}), LINK_WARNING_DURATION);
+
+                console.log(`⏱️ [TEXT SPAM] تم إعطاء تايم أوت لـ ${message.author.tag}`);
+                return;
+            } catch (err) {
+                console.error('❌ فشل إعطاء تايم أوت للعضو:', err.message);
+            }
+        }
+    } catch (error) {
+        console.error('❌ خطأ في نظام مكافحة السبام:', error.message);
+    }
+});
+
+// ============================================================
 // نظام النقل الرقابي
 // ============================================================
 client.on('messageReactionAdd', async (reaction, user) => {
@@ -719,68 +838,4 @@ client.on('interactionCreate', async interaction => {
         } catch (error) {
             console.error('❌ خطأ أثناء مسح الرسائل:', error);
             try {
-                await interaction.editReply({ content: '❌ حدث خطأ أثناء محاولة مسح الرسائل.' });
-            } catch (e) {}
-        } finally {
-            clearProcessing.delete(userId);
-        }
-    }
-
-    // أمر /sendrules
-    if (interaction.commandName === 'sendrules') {
-        const userId = interaction.user.id;
-
-        if (rulesProcessing.has(userId)) {
-            await interaction.reply({ content: '⏳ في عملية نشر قوانين جارية بالفعل.', ephemeral: true });
-            return;
-        }
-
-        rulesProcessing.add(userId);
-
-        try {
-            const authorized = await isAuthorizedFast(interaction.guild, userId);
-            if (!authorized) {
-                await interaction.reply({ content: '❌ عذراً، هذا الأمر مخصص للإدارة فقط!', ephemeral: true });
-                rulesProcessing.delete(userId);
-                return;
-            }
-
-            await interaction.deferReply({ ephemeral: true });
-
-            const result = await deployRules(interaction.guild, true);
-
-            await interaction.editReply({ content: result.message });
-        } catch (error) {
-            console.error('❌ خطأ في نشر القوانين:', error);
-            try {
-                await interaction.editReply({ content: '❌ حدث خطأ أثناء نشر القوانين.' });
-            } catch (e) {}
-        } finally {
-            rulesProcessing.delete(userId);
-        }
-    }
-});
-
-// ============================================================
-// حماية من الأخطاء
-// ============================================================
-process.on('unhandledRejection', (reason) => {
-    console.error('⚠️ [UNHANDLED]', reason?.message || reason);
-});
-process.on('uncaughtException', (err) => {
-    console.error('⚠️ [UNCAUGHT]', err?.message || err);
-});
-
-// ============================================================
-// Express Server
-// ============================================================
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`🌐 Server Port ${PORT}`);
-});
-
-// ============================================================
-// تسجيل الدخول
-// ============================================================
-client.login(process.env.DISCORD_TOKEN).catch((err) => {
-    console.error('❌ [LOGIN] فشل تسجيل الدخول:', err.message);
-});
+                await interaction.editReply({

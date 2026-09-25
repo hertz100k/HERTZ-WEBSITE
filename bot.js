@@ -68,18 +68,16 @@ const TARGET_HOURS = 1000;
 let voiceSessionStartTime = null;
 
 // ============================================================
-// ✅ أنظمة منع التكرار (مع تدقيق صارم)
+// ✅ Sets لمنع التكرار
 // ============================================================
 const movedMessages = new Set();
 const processingLocks = new Set();
 const sourceMessagesDeleted = new Set();
 const vaultMessages = new Set();
 
-// ✅ منع تكرار الترحيب والمغادرة (بمستوى صارم)
-const welcomedMembers = new Set();       // الأعضاء اللي اترحب بيهم
-const leftMembers = new Set();           // الأعضاء اللي غادروا
-const welcomeProcessing = new Set();     // قيد المعالجة
-const leaveProcessing = new Set();       // قيد المعالجة
+// ✅ مجموعة الأعضاء اللي اترحب بيهم ومغادروا
+const welcomedMembers = new Set();
+const leftMembers = new Set();
 
 const clearProcessing = new Set();
 const rulesProcessing = new Set();
@@ -91,7 +89,6 @@ console.log('   DISCORD_TOKEN:', process.env.DISCORD_TOKEN ? '✅' : '❌');
 console.log('   SUPABASE_URL:', process.env.SUPABASE_URL ? '✅' : '⚠️');
 console.log('   SUPABASE_KEY:', process.env.SUPABASE_KEY ? '✅' : '⚠️');
 
-// ✅ تعريف client
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -132,7 +129,7 @@ async function deployRules(guild, silent = false) {
     const everyoneRole = guild.roles.everyone;
     try {
         const generalChannel = await guild.channels.fetch(GENERAL_RULES_CHANNEL_ID).catch(() => null);
-        if (!generalChannel) { console.error(`❌ [RULES] روم القوانين العامة مش موجود!`); return { success: false, message: 'روم القوانين العامة مش موجود!' }; }
+        if (!generalChannel) { return { success: false, message: 'روم القوانين العامة مش موجود!' }; }
         const botMember = guild.members.me;
         const perms = generalChannel.permissionsFor(botMember);
         if (!perms || !perms.has(PermissionFlagsBits.SendMessages)) { return { success: false, message: 'البوت مش عنده صلاحية إرسال!' }; }
@@ -164,24 +161,20 @@ async function deployRules(guild, silent = false) {
 }
 
 // ============================================================
-// ✅ دالة الترحيب — منع تكرار 100%
+// ✅ الترحيب (منع تكرار 100% - مرة واحدة بس)
 // ============================================================
 async function sendWelcomeMessage(guild, member) {
     const memberId = member.id;
 
     if (member.user.bot) return;
-
-    // ✅ لو اترحب بيه قبل كده — اخرج فورًا (مفيش رسالة)
     if (welcomedMembers.has(memberId)) return;
-    if (welcomeProcessing.has(memberId)) return;
 
-    // ✅ علامة فورية قبل أي async
-    welcomeProcessing.add(memberId);
+    // ✅ علامة فورية قبل أي حاجة
+    welcomedMembers.add(memberId);
 
     try {
-        console.log(`\n🎉 [WELCOME] بدء الترحيب بـ ${member.user.tag}`);
+        console.log(`\n🎉 [WELCOME] ${member.user.tag}`);
 
-        // رول تلقائي
         try {
             const role = guild.roles.cache.get(AUTO_ROLE_ID);
             if (role) await member.roles.add(role, 'رول تلقائي');
@@ -198,64 +191,39 @@ async function sendWelcomeMessage(guild, member) {
             .setTimestamp();
 
         await welcomeChannel.send({ embeds: [embed] });
-
-        // ✅ نخليها في welcomedMembers بعد ما نبعت فعليًا
-        welcomedMembers.add(memberId);
-        leftMembers.delete(memberId);
         console.log(`✅ [WELCOME] ${member.user.tag}`);
     } catch (e) {
         console.error(`❌ [WELCOME]`, e);
-    } finally {
-        welcomeProcessing.delete(memberId);
     }
 }
 
 // ============================================================
-// ✅ دالة المغادرة — منع تكرار 100%
+// ✅ المغادرة (منع تكرار 100% - مرة واحدة بس)
 // ============================================================
 async function sendLeaveMessage(guild, memberId, memberTag) {
-    // ✅ لو اتسجل قبل كده — اخرج فورًا
     if (leftMembers.has(memberId)) return;
-    if (leaveProcessing.has(memberId)) return;
 
-    // ✅ علامة فورية قبل أي async
-    leaveProcessing.add(memberId);
+    // ✅ علامة فورية قبل أي حاجة
+    leftMembers.add(memberId);
 
     try {
-        console.log(`\n🚪 [LEAVE] بدء المغادرة لـ ${memberTag}`);
+        console.log(`\n🚪 [LEAVE] ${memberTag}`);
 
         const leaveChannel = await guild.channels.fetch(LEAVE_CHANNEL_ID).catch(() => null);
         if (!leaveChannel) return;
 
         await leaveChannel.send({ content: `**غادر** <@${memberId}>` });
-
-        // ✅ نخليها في leftMembers بعد ما نبعت فعليًا
-        leftMembers.add(memberId);
-        welcomedMembers.delete(memberId);
         console.log(`✅ [LEAVE] ${memberTag}`);
     } catch (e) {
         console.error(`❌ [LEAVE]`, e);
-    } finally {
-        leaveProcessing.delete(memberId);
     }
 }
 
 // ============================================================
-// ✅ المصدر الوحيد للترحيب والمغادرة
+// ❌❌❌ مش هنستخدم guildMemberAdd / guildMemberRemove
+// ✅ Polling هو المصدر الوحيد
 // ============================================================
-client.on('guildMemberAdd', async (member) => {
-    console.log(`\n🔔 [EVENT] guildMemberAdd: ${member.user.tag}`);
-    await sendWelcomeMessage(member.guild, member);
-});
 
-client.on('guildMemberRemove', async (member) => {
-    console.log(`\n🔔 [EVENT] guildMemberRemove: ${member.user.tag}`);
-    await sendLeaveMessage(member.guild, member.id, member.user.tag);
-});
-
-// ============================================================
-// ✅ Polling — بس لتسجيل الأعضاء (مش بيبعت ترحيب/مغادرة)
-// ============================================================
 let knownMembers = new Set();
 let pollCount = 0;
 let isFirstPoll = true;
@@ -269,20 +237,48 @@ async function pollMembers() {
         const guild = client.guilds.cache.get(GUILD_ID) || client.guilds.cache.first();
         if (!guild) { isPolling = false; return; }
         const members = await guild.members.fetch();
+
+        // ✅ أول Poll: نسجل الأعضاء الحاليين ونخرج (عشان مفيش ترحيب جماعي)
         if (isFirstPoll) {
             members.forEach(m => knownMembers.add(m.id));
-            console.log(`📋 [POLL #${pollCount}] تم تسجيل ${knownMembers.size} عضو.`);
-            isFirstPoll = false; isPolling = false; return;
+            console.log(`📋 [POLL #${pollCount}] تم تسجيل ${knownMembers.size} عضو (بدون إرسال ترحيب).`);
+            isFirstPoll = false;
+            isPolling = false;
+            return;
         }
-        // ✅ بس نسجل الأعضاء الجدد — مش بنبعت ترحيب
-        for (const [id] of members) {
-            if (!knownMembers.has(id)) knownMembers.add(id);
+
+        // ✅ الأعضاء الجدد: نبعت ترحيب (مرة واحدة بس)
+        for (const [id, member] of members) {
+            if (!knownMembers.has(id)) {
+                knownMembers.add(id);
+                if (member.user.bot) continue;
+                if (welcomedMembers.has(id)) continue;
+
+                console.log(`\n🆕 [POLL] عضو جديد: ${member.user.tag}`);
+                await sendWelcomeMessage(guild, member);
+            }
         }
-        // ✅ بس نشيل اللي خرجوا — مش بنبعت مغادرة
+
+        // ✅ الأعضاء اللي خرجوا: نبعت مغادرة (مرة واحدة بس)
         for (const id of knownMembers) {
-            if (!members.has(id)) knownMembers.delete(id);
+            if (!members.has(id)) {
+                knownMembers.delete(id);
+                if (leftMembers.has(id)) continue;
+
+                try {
+                    const user = await client.users.fetch(id).catch(() => null);
+                    if (user && !user.bot) {
+                        console.log(`\n🚪 [POLL] عضو خرج: ${user.tag}`);
+                        await sendLeaveMessage(guild, id, user.tag);
+                    }
+                } catch (e) {}
+            }
         }
-    } catch (e) {} finally { isPolling = false; }
+    } catch (e) {
+        console.error('❌ [POLL]', e.message);
+    } finally {
+        isPolling = false;
+    }
 }
 
 // ============================================================
@@ -341,7 +337,7 @@ client.on('messageCreate', async (message) => {
 });
 
 // ============================================================
-// ✅ نقل الرسائل للمخزن — منع تكرار 100%
+// ✅ نقل الرسائل للمخزن (منع تكرار 100%)
 // ============================================================
 client.on('messageReactionAdd', async (reaction, user) => {
     if (user.bot) return;
@@ -352,7 +348,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
 
     const messageId = message.id;
 
-    // ✅ منع تكرار 4 طبقات
     if (movedMessages.has(messageId)) return;
     if (sourceMessagesDeleted.has(messageId)) return;
     if (processingLocks.has(messageId)) return;
@@ -378,7 +373,6 @@ client.on('messageReactionAdd', async (reaction, user) => {
         const vaultKey = `${targetVaultId}:${messageId}`;
         if (vaultMessages.has(vaultKey)) { processingLocks.delete(messageId); return; }
 
-        // ✅ علامة النقل BEFORE أي async
         movedMessages.add(messageId);
         vaultMessages.add(vaultKey);
 
@@ -464,6 +458,11 @@ client.once("ready", async () => {
     console.log(`\n============================================`);
     console.log(`✅ HERTZ ADMIN BOT: ${client.user.tag}`);
     console.log(`============================================\n`);
+
+    // ✅ نمسح الـ Sets عشان مع كل Restart، البوت يبدأ من جديد بدون تكرار
+    welcomedMembers.clear();
+    leftMembers.clear();
+
     const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
     try {
         const commands = [
@@ -474,14 +473,22 @@ client.once("ready", async () => {
         await rest.put(Routes.applicationCommands(client.user.id), { body: commands });
         console.log('✅ تم تسجيل الأوامر!');
     } catch (e) { console.error('❌', e); }
+
     setTimeout(async () => {
         try {
             const guild = client.guilds.cache.get(GUILD_ID) || client.guilds.cache.first();
             if (guild) { const r = await deployRules(guild, false); if (r.success) console.log('✅ [RULES] نشر تلقائي!'); else console.error(`❌ ${r.message}`); }
         } catch (e) { console.error('❌', e.message); }
     }, 3000);
+
     connectToVoiceChannel();
-    setTimeout(async () => { await pollMembers(); setInterval(pollMembers, 30000); }, 5000);
+
+    // ✅ Polling كل 30 ثانية — المصدر الوحيد للترحيب والمغادرة
+    setTimeout(async () => {
+        await pollMembers();
+        setInterval(pollMembers, 30000);
+    }, 5000);
+
     setInterval(() => {
         try {
             if (!currentConnection || currentConnection.state.status === VoiceConnectionStatus.Disconnected || currentConnection.state.status === VoiceConnectionStatus.Destroyed) connectToVoiceChannel();
@@ -490,7 +497,7 @@ client.once("ready", async () => {
 });
 
 // ============================================================
-// ✅ أمر /clear + /sendrules
+// ✅ أوامر السلاش
 // ============================================================
 client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;

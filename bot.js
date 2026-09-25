@@ -86,7 +86,7 @@ let voiceSessionStartTime = null;
 
 
 // ============================================================
-// 🛡️ Sets لمنع التكرار
+// 🛡️ منع تكرار العمليات
 // ============================================================
 
 const movedMessages = new Set();
@@ -94,293 +94,436 @@ const processingLocks = new Set();
 const sourceMessagesDeleted = new Set();
 const vaultMessages = new Set();
 
+const clearProcessing = new Set();
+const rulesProcessing = new Set();
 
-// ============================================================
-// 🛡️ نظام حماية الترحيب والمغادرة من التكرار
-// ============================================================
-
-const welcomeProcessing = new Set();
-const leaveProcessing = new Set();
-
-const welcomeSent = new Set();
-const leaveSent = new Set();
+const linkSpamMap = new Map();
+const textSpamMap = new Map();
 
 
 // ============================================================
-// 💾 ملف حفظ حالة الدخول والخروج
+// 🚨 حماية الترحيب والمغادرة
 // ============================================================
 
-const EVENT_DEDUPE_FILE = "./event-dedupe.json";
+const welcomeLocks = new Set();
+const leaveLocks = new Set();
 
-const EVENT_DEDUPE_MAX_AGE =
-    7 * 24 * 60 * 60 * 1000;
+const welcomeCooldown = new Map();
+const leaveCooldown = new Map();
 
 
-let eventDedupe = {
-    activeJoins: {},
-    processedJoins: {},
-    processedLeaves: {}
+// مدة منع تكرار نفس الحدث
+const MEMBER_EVENT_COOLDOWN = 60 * 1000;
+
+
+// ============================================================
+// 💾 ملف أحداث الترحيب والمغادرة
+// ============================================================
+
+const EVENT_FILE = "./event-dedupe.json";
+
+let eventDatabase = {
+    welcomes: {},
+    leaves: {}
 };
 
 
 // ============================================================
-// 💾 تحميل سجل منع التكرار
+// 📂 تحميل قاعدة منع التكرار
 // ============================================================
 
-function loadEventDedupe() {
+function loadEventDatabase() {
+
     try {
 
-        if (!fs.existsSync(EVENT_DEDUPE_FILE)) {
+        if (!fs.existsSync(EVENT_FILE)) {
+
+            fs.writeFileSync(
+                EVENT_FILE,
+                JSON.stringify(
+                    eventDatabase,
+                    null,
+                    2
+                ),
+                "utf8"
+            );
+
             return;
         }
 
-        const raw = fs.readFileSync(
-            EVENT_DEDUPE_FILE,
-            "utf8"
-        );
 
-        if (!raw.trim()) {
+        const data =
+            fs.readFileSync(
+                EVENT_FILE,
+                "utf8"
+            );
+
+
+        if (!data.trim()) {
             return;
         }
 
-        const parsed = JSON.parse(raw);
+
+        const parsed =
+            JSON.parse(data);
+
 
         if (parsed && typeof parsed === "object") {
 
-            eventDedupe = {
+            eventDatabase = {
 
-                activeJoins:
-                    parsed.activeJoins || {},
+                welcomes:
+                    parsed.welcomes || {},
 
-                processedJoins:
-                    parsed.processedJoins || {},
-
-                processedLeaves:
-                    parsed.processedLeaves || {}
+                leaves:
+                    parsed.leaves || {}
 
             };
+
         }
 
-    } catch (e) {
+    } catch (error) {
 
         console.error(
-            "❌ [DEDUPE LOAD]",
-            e.message
+            "❌ [EVENT DATABASE LOAD]",
+            error.message
         );
 
     }
+
 }
 
 
 // ============================================================
-// 🧹 تنظيف البيانات القديمة
+// 💾 حفظ قاعدة منع التكرار
 // ============================================================
 
-function cleanupEventDedupe() {
-
-    const cutoff =
-        Date.now() - EVENT_DEDUPE_MAX_AGE;
-
-
-    for (
-        const collectionName
-        of [
-            "activeJoins",
-            "processedJoins",
-            "processedLeaves"
-        ]
-    ) {
-
-        const collection =
-            eventDedupe[collectionName];
-
-
-        for (
-            const [key, value]
-            of Object.entries(collection)
-        ) {
-
-            const timestamp =
-                Number(
-                    value?.timestamp ||
-                    value ||
-                    0
-                );
-
-
-            if (
-                !timestamp ||
-                timestamp < cutoff
-            ) {
-
-                delete collection[key];
-
-            }
-        }
-    }
-}
-
-
-// ============================================================
-// 💾 حفظ البيانات بشكل آمن
-// ============================================================
-
-function saveEventDedupe() {
+function saveEventDatabase() {
 
     try {
 
-        cleanupEventDedupe();
-
-
         const tempFile =
-            `${EVENT_DEDUPE_FILE}.tmp`;
+            `${EVENT_FILE}.tmp`;
 
 
         fs.writeFileSync(
+
             tempFile,
+
             JSON.stringify(
-                eventDedupe,
+                eventDatabase,
                 null,
                 2
             ),
+
             "utf8"
+
         );
 
 
         fs.renameSync(
             tempFile,
-            EVENT_DEDUPE_FILE
+            EVENT_FILE
         );
 
 
-    } catch (e) {
+    } catch (error) {
 
         console.error(
-            "❌ [DEDUPE SAVE]",
-            e.message
+            "❌ [EVENT DATABASE SAVE]",
+            error.message
         );
 
     }
+
 }
 
 
 // ============================================================
-// 🟢 تسجيل دخول تم تنفيذه
+// 🧹 تنظيف الأحداث القديمة
 // ============================================================
 
-function markJoinProcessed(
+function cleanupEventDatabase() {
+
+    const maxAge =
+        7 * 24 * 60 * 60 * 1000;
+
+
+    const cutoff =
+        Date.now() - maxAge;
+
+
+    for (
+        const type of [
+            "welcomes",
+            "leaves"
+        ]
+    ) {
+
+        for (
+            const [key, value]
+            of Object.entries(
+                eventDatabase[type]
+            )
+        ) {
+
+            if (
+                !value ||
+                !value.timestamp ||
+                value.timestamp < cutoff
+            ) {
+
+                delete eventDatabase[type][key];
+
+            }
+
+        }
+
+    }
+
+
+    saveEventDatabase();
+
+}
+
+
+loadEventDatabase();
+
+cleanupEventDatabase();
+
+
+// ============================================================
+// 🔐 إنشاء Event ID
+// ============================================================
+
+function createEventId(
+    type,
     guildId,
     memberId,
-    joinTimestamp
+    timestamp
 ) {
 
-    const key =
-        `${guildId}:${memberId}:${joinTimestamp}`;
+    return `${type}:${guildId}:${memberId}:${timestamp}`;
+
+}
 
 
-    eventDedupe.processedJoins[key] = {
-        timestamp: Date.now()
+// ============================================================
+// 🔎 البحث عن Event سابق في الذاكرة/الملف
+// ============================================================
+
+function wasEventProcessed(
+    type,
+    eventId
+) {
+
+    return Boolean(
+        eventDatabase[type]?.[eventId]
+    );
+
+}
+
+
+// ============================================================
+// 💾 تسجيل Event
+// ============================================================
+
+function markEventProcessed(
+    type,
+    eventId
+) {
+
+    if (!eventDatabase[type]) {
+
+        eventDatabase[type] = {};
+
+    }
+
+
+    eventDatabase[type][eventId] = {
+
+        timestamp:
+            Date.now()
+
     };
 
 
-    eventDedupe.activeJoins[
-        `${guildId}:${memberId}`
-    ] = {
+    saveEventDatabase();
 
-        joinTimestamp,
-
-        timestamp: Date.now()
-
-    };
-
-
-    saveEventDedupe();
-
-
-    return key;
 }
 
 
 // ============================================================
-// 🔴 تسجيل مغادرة تم تنفيذها
+// 🔎 البحث عن Marker في آخر رسائل الروم
 // ============================================================
 
-function markLeaveProcessed(
-    guildId,
-    memberId,
-    joinTimestamp
+async function findExistingEventMessage(
+    channel,
+    eventMarker
 ) {
 
-    const key =
-        `${guildId}:${memberId}:${joinTimestamp || "unknown"}`;
+    try {
+
+        if (
+            !channel ||
+            !channel.isTextBased()
+        ) {
+
+            return null;
+
+        }
 
 
-    eventDedupe.processedLeaves[key] = {
-        timestamp: Date.now()
-    };
+        const messages =
+            await channel.messages.fetch({
+                limit: 100
+            });
 
 
-    delete eventDedupe.activeJoins[
-        `${guildId}:${memberId}`
-    ];
+        for (
+            const message
+            of messages.values()
+        ) {
+
+            if (
+                message.author?.id !==
+                client.user?.id
+            ) {
+
+                continue;
+
+            }
 
 
-    saveEventDedupe();
+            // Marker في المحتوى
+            if (
+                message.content &&
+                message.content.includes(
+                    eventMarker
+                )
+            ) {
+
+                return message;
+
+            }
 
 
-    return key;
+            // Marker في الـ Embeds
+            if (
+                message.embeds?.length
+            ) {
+
+                for (
+                    const embed
+                    of message.embeds
+                ) {
+
+                    const allText = [
+
+                        embed.title || "",
+
+                        embed.description || "",
+
+                        embed.footer?.text || ""
+
+                    ].join(" ");
+
+
+                    if (
+                        allText.includes(
+                            eventMarker
+                        )
+                    ) {
+
+                        return message;
+
+                    }
+
+                }
+
+            }
+
+        }
+
+
+    } catch (error) {
+
+        console.error(
+            "❌ [EVENT SEARCH]",
+            error.message
+        );
+
+    }
+
+
+    return null;
+
 }
 
 
 // ============================================================
-// 🔑 إنشاء مفتاح دخول ثابت
+// 🛡️ إرسال رسالة Event واحدة فقط
 // ============================================================
 
-function getJoinKey(
-    guildId,
-    memberId,
-    joinTimestamp
+async function sendUniqueEventMessage(
+    channel,
+    eventMarker,
+    payload
 ) {
 
-    return `${guildId}:${memberId}:${joinTimestamp}`;
+    // --------------------------------------------------------
+    // فحص الروم
+    // --------------------------------------------------------
+
+    if (
+        !channel ||
+        !channel.isTextBased()
+    ) {
+
+        return false;
+
+    }
+
+
+    // --------------------------------------------------------
+    // لو الرسالة موجودة بالفعل
+    // --------------------------------------------------------
+
+    const existing =
+        await findExistingEventMessage(
+            channel,
+            eventMarker
+        );
+
+
+    if (existing) {
+
+        console.log(
+            `🛑 [ANTI DUPLICATE] الحدث موجود بالفعل: ${eventMarker}`
+        );
+
+        return false;
+
+    }
+
+
+    // --------------------------------------------------------
+    // إرسال الرسالة
+    // --------------------------------------------------------
+
+    await channel.send(
+        payload
+    );
+
+
+    console.log(
+        `✅ [EVENT SENT] ${eventMarker}`
+    );
+
+
+    return true;
 
 }
-
-
-// ============================================================
-// 💾 تحميل سجل الأحداث
-// ============================================================
-
-loadEventDedupe();
-
-cleanupEventDedupe();
-
-
-// ============================================================
-// 🛡️ أوامر الإدارة
-// ============================================================
-
-const clearProcessing = new Set();
-
-const rulesProcessing = new Set();
-
-const linkSpamMap = new Map();
-
-const textSpamMap = new Map();
-
-
-// ============================================================
-// 🔍 فحص Environment
-// ============================================================
-
-console.log("\n🔍 [ENV CHECK]:");
-
-console.log(
-    "   DISCORD_TOKEN:",
-    process.env.DISCORD_TOKEN
-        ? "✅"
-        : "❌"
-);
 
 
 // ============================================================
@@ -473,7 +616,9 @@ async function isAuthorizedFast(
     try {
 
         let member =
-            guild.members.cache.get(userId);
+            guild.members.cache.get(
+                userId
+            );
 
 
         if (!member) {
@@ -481,13 +626,16 @@ async function isAuthorizedFast(
             try {
 
                 member =
-                    await guild.members.fetch(userId);
+                    await guild.members.fetch(
+                        userId
+                    );
 
             } catch (e) {
 
                 return false;
 
             }
+
         }
 
 
@@ -506,6 +654,7 @@ async function isAuthorizedFast(
         return false;
 
     }
+
 }
 
 
@@ -521,10 +670,6 @@ async function deployRules(
     const everyoneRole =
         guild.roles.everyone;
 
-
-    // --------------------------------------------------------
-    // القوانين العامة
-    // --------------------------------------------------------
 
     let generalRulesText = "";
 
@@ -543,10 +688,6 @@ async function deployRules(
 
     }
 
-
-    // --------------------------------------------------------
-    // قوانين الإدارة
-    // --------------------------------------------------------
 
     let adminRulesText = "";
 
@@ -567,14 +708,16 @@ async function deployRules(
 
 
     // --------------------------------------------------------
-    // نشر العامة
+    // القوانين العامة
     // --------------------------------------------------------
 
     try {
 
         const generalChannel =
             await guild.channels
-                .fetch(GENERAL_RULES_CHANNEL_ID)
+                .fetch(
+                    GENERAL_RULES_CHANNEL_ID
+                )
                 .catch(() => null);
 
 
@@ -675,7 +818,6 @@ async function deployRules(
             err.message
         );
 
-
         return {
             success: false,
             message: "خطأ!"
@@ -685,14 +827,16 @@ async function deployRules(
 
 
     // --------------------------------------------------------
-    // نشر قوانين الإدارة
+    // قوانين الإدارة
     // --------------------------------------------------------
 
     try {
 
         const adminChannel =
             await guild.channels
-                .fetch(ADMIN_RULES_CHANNEL_ID)
+                .fetch(
+                    ADMIN_RULES_CHANNEL_ID
+                )
                 .catch(() => null);
 
 
@@ -793,7 +937,6 @@ async function deployRules(
             err.message
         );
 
-
         return {
             success: false,
             message: "خطأ!"
@@ -815,8 +958,7 @@ async function deployRules(
 
 
 // ============================================================
-// 👋 الترحيب
-// Event مباشر + Lock + Persistent Dedupe
+// 👋 الترحيب - النظام الجديد
 // ============================================================
 
 async function sendWelcomeMessage(
@@ -824,11 +966,8 @@ async function sendWelcomeMessage(
     member
 ) {
 
-    const memberId =
-        member.id;
-
-
     if (
+        !guild ||
         !member ||
         member.user?.bot
     ) {
@@ -838,79 +977,179 @@ async function sendWelcomeMessage(
     }
 
 
-    // وقت دخول العضو للسيرفر
-    const joinTimestamp =
-        Number(
-            member.joinedTimestamp ||
-            Date.now()
-        );
-
-
-    // مفتاح ثابت لنفس جلسة الدخول
-    const joinKey =
-        getJoinKey(
-            guild.id,
-            memberId,
-            joinTimestamp
-        );
+    const memberId =
+        member.id;
 
 
     // --------------------------------------------------------
-    // 🛡️ منع أي تنفيذ مزدوج
+    // مفتاح ثابت للعضو
+    // --------------------------------------------------------
+
+    const lockKey =
+        `${guild.id}:${memberId}`;
+
+
+    // --------------------------------------------------------
+    // منع التنفيذ المتزامن
     // --------------------------------------------------------
 
     if (
-        welcomeProcessing.has(joinKey)
+        welcomeLocks.has(
+            lockKey
+        )
     ) {
+
+        console.log(
+            `🛑 [WELCOME LOCK] تم منع تكرار ${memberId}`
+        );
 
         return;
 
     }
 
 
-    if (
-        welcomeSent.has(joinKey)
-    ) {
-
-        return;
-
-    }
-
-
-    if (
-        eventDedupe.processedJoins[joinKey]
-    ) {
-
-        return;
-
-    }
-
-
-    welcomeProcessing.add(
-        joinKey
+    welcomeLocks.add(
+        lockKey
     );
 
 
     try {
 
-        // مهم جداً:
-        // بنسجل الحدث قبل await عشان لو نفس الحدث وصل
-        // تاني أثناء الإرسال، مايتبعتش مرة ثانية.
+        // ----------------------------------------------------
+        // Cooldown
+        // ----------------------------------------------------
 
-        welcomeSent.add(
-            joinKey
-        );
+        const lastWelcome =
+            welcomeCooldown.get(
+                lockKey
+            );
 
 
-        markJoinProcessed(
-            guild.id,
-            memberId,
-            joinTimestamp
-        );
+        if (
+            lastWelcome &&
+            Date.now() - lastWelcome <
+            MEMBER_EVENT_COOLDOWN
+        ) {
+
+            console.log(
+                `🛑 [WELCOME COOLDOWN] ${memberId}`
+            );
+
+            return;
+
+        }
 
 
         // ----------------------------------------------------
-        // إضافة الرول تلقائياً
+        // Timestamp خاص بالدخول
+        // ----------------------------------------------------
+
+        const joinedAt =
+            member.joinedTimestamp ||
+            Date.now();
+
+
+        const eventId =
+            createEventId(
+                "WELCOME",
+                guild.id,
+                memberId,
+                joinedAt
+            );
+
+
+        const eventMarker =
+            `[HERTZ_EVENT:${eventId}]`;
+
+
+        // ----------------------------------------------------
+        // قاعدة البيانات المحلية
+        // ----------------------------------------------------
+
+        if (
+            wasEventProcessed(
+                "welcomes",
+                eventId
+            )
+        ) {
+
+            console.log(
+                `🛑 [WELCOME DATABASE] ${memberId}`
+            );
+
+            welcomeCooldown.set(
+                lockKey,
+                Date.now()
+            );
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // روم الترحيب
+        // ----------------------------------------------------
+
+        const welcomeChannel =
+            await guild.channels
+                .fetch(
+                    WELCOME_CHANNEL_ID
+                )
+                .catch(() => null);
+
+
+        if (
+            !welcomeChannel ||
+            !welcomeChannel.isTextBased()
+        ) {
+
+            console.error(
+                "❌ [WELCOME] روم الترحيب غير موجود"
+            );
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // فحص Discord نفسه
+        // ----------------------------------------------------
+
+        const alreadyExists =
+            await findExistingEventMessage(
+                welcomeChannel,
+                eventMarker
+            );
+
+
+        if (alreadyExists) {
+
+            console.log(
+                `🛑 [WELCOME DISCORD CHECK] تم منع رسالة مكررة للعضو ${memberId}`
+            );
+
+
+            markEventProcessed(
+                "welcomes",
+                eventId
+            );
+
+
+            welcomeCooldown.set(
+                lockKey,
+                Date.now()
+            );
+
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // إضافة الرول
         // ----------------------------------------------------
 
         try {
@@ -946,27 +1185,7 @@ async function sendWelcomeMessage(
 
 
         // ----------------------------------------------------
-        // روم الترحيب
-        // ----------------------------------------------------
-
-        const welcomeChannel =
-            await guild.channels
-                .fetch(WELCOME_CHANNEL_ID)
-                .catch(() => null);
-
-
-        if (
-            !welcomeChannel ||
-            !welcomeChannel.isTextBased()
-        ) {
-
-            return;
-
-        }
-
-
-        // ----------------------------------------------------
-        // رسالة الترحيب
+        // إنشاء Embed
         // ----------------------------------------------------
 
         const embed =
@@ -979,7 +1198,9 @@ async function sendWelcomeMessage(
                 )
 
                 .setDescription(
-                    `أهلاً بك يا <@${memberId}> في سيرفر **${SERVER_NAME}**`
+
+                    `أهلاً بك يا <@${memberId}> في سيرفر **${SERVER_NAME}**\n\n${eventMarker}`
+
                 )
 
                 .setImage(
@@ -996,37 +1217,68 @@ async function sendWelcomeMessage(
                 .setTimestamp();
 
 
-        await welcomeChannel.send({
+        // ----------------------------------------------------
+        // إرسال مرة واحدة
+        // ----------------------------------------------------
 
-            embeds: [
-                embed
-            ],
+        const sent =
+            await sendUniqueEventMessage(
 
-            allowedMentions: {
-                users: [
-                    memberId
-                ]
-            }
+                welcomeChannel,
 
-        });
+                eventMarker,
+
+                {
+
+                    embeds: [
+                        embed
+                    ],
+
+                    allowedMentions: {
+
+                        users: [
+                            memberId
+                        ]
+
+                    }
+
+                }
+
+            );
 
 
-        console.log(
-            `✅ [WELCOME] تم إرسال ترحيب واحد فقط لـ ${member.user.tag} (${memberId})`
+        // ----------------------------------------------------
+        // تسجيل الحدث
+        // ----------------------------------------------------
+
+        if (sent) {
+
+            markEventProcessed(
+                "welcomes",
+                eventId
+            );
+
+        }
+
+
+        welcomeCooldown.set(
+            lockKey,
+            Date.now()
         );
 
 
-    } catch (e) {
+    } catch (error) {
 
         console.error(
             "❌ [WELCOME]",
-            e.message
+            error.message
         );
+
 
     } finally {
 
-        welcomeProcessing.delete(
-            joinKey
+        welcomeLocks.delete(
+            lockKey
         );
 
     }
@@ -1035,8 +1287,7 @@ async function sendWelcomeMessage(
 
 
 // ============================================================
-// 👋 المغادرة
-// Event مباشر + Lock + Persistent Dedupe
+// 🚪 المغادرة - النظام الجديد
 // ============================================================
 
 async function sendLeaveMessage(
@@ -1055,85 +1306,90 @@ async function sendLeaveMessage(
     }
 
 
-    const activeKey =
+    const lockKey =
         `${guild.id}:${memberId}`;
 
 
-    const activeJoin =
-        eventDedupe.activeJoins[
-            activeKey
-        ];
-
-
-    const joinTimestamp =
-        activeJoin?.joinTimestamp ||
-        "unknown";
-
-
-    const leaveKey =
-        `${guild.id}:${memberId}:${joinTimestamp}`;
-
-
     // --------------------------------------------------------
-    // 🛡️ منع التكرار
+    // منع التنفيذ المتزامن
     // --------------------------------------------------------
 
     if (
-        leaveProcessing.has(
-            leaveKey
+        leaveLocks.has(
+            lockKey
         )
     ) {
 
-        return;
-
-    }
-
-
-    if (
-        leaveSent.has(
-            leaveKey
-        )
-    ) {
+        console.log(
+            `🛑 [LEAVE LOCK] تم منع تكرار ${memberId}`
+        );
 
         return;
 
     }
 
 
-    if (
-        eventDedupe.processedLeaves[
-            leaveKey
-        ]
-    ) {
-
-        return;
-
-    }
-
-
-    leaveProcessing.add(
-        leaveKey
+    leaveLocks.add(
+        lockKey
     );
 
 
     try {
 
-        // تسجيل الحدث قبل الإرسال
-        leaveSent.add(
-            leaveKey
-        );
+        // ----------------------------------------------------
+        // Cooldown
+        // ----------------------------------------------------
+
+        const lastLeave =
+            leaveCooldown.get(
+                lockKey
+            );
 
 
-        markLeaveProcessed(
-            guild.id,
-            memberId,
-            joinTimestamp
-        );
+        if (
+            lastLeave &&
+            Date.now() - lastLeave <
+            MEMBER_EVENT_COOLDOWN
+        ) {
 
+            console.log(
+                `🛑 [LEAVE COOLDOWN] ${memberId}`
+            );
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // Event ID للمغادرة
+        // ----------------------------------------------------
+
+        const eventId =
+            createEventId(
+                "LEAVE",
+                guild.id,
+                memberId,
+                Date.now()
+            );
+
+
+        // لأن وقت المغادرة نفسه ممكن يختلف،
+        // بنستخدم Marker ثابت للعضو داخل فترة الحماية.
+
+        const eventMarker =
+            `[HERTZ_LEAVE:${guild.id}:${memberId}]`;
+
+
+        // ----------------------------------------------------
+        // روم المغادرة
+        // ----------------------------------------------------
 
         const leaveChannel =
             await guild.channels
-                .fetch(LEAVE_CHANNEL_ID)
+                .fetch(
+                    LEAVE_CHANNEL_ID
+                )
                 .catch(() => null);
 
 
@@ -1142,23 +1398,78 @@ async function sendLeaveMessage(
             !leaveChannel.isTextBased()
         ) {
 
+            console.error(
+                "❌ [LEAVE] روم المغادرة غير موجود"
+            );
+
             return;
 
         }
 
 
+        // ----------------------------------------------------
+        // فحص آخر الرسائل
+        // ----------------------------------------------------
+
+        const alreadyExists =
+            await findExistingEventMessage(
+                leaveChannel,
+                eventMarker
+            );
+
+
+        if (alreadyExists) {
+
+            console.log(
+                `🛑 [LEAVE DISCORD CHECK] تم منع مغادرة مكررة للعضو ${memberId}`
+            );
+
+
+            leaveCooldown.set(
+                lockKey,
+                Date.now()
+            );
+
+
+            return;
+
+        }
+
+
+        // ----------------------------------------------------
+        // إرسال
+        // ----------------------------------------------------
+
         await leaveChannel.send({
 
             content:
-                `**غادر** <@${memberId}>`,
+                `**غادر** <@${memberId}>\n${eventMarker}`,
 
             allowedMentions: {
+
                 users: [
                     memberId
                 ]
+
             }
 
         });
+
+
+        // ----------------------------------------------------
+        // تسجيل
+        // ----------------------------------------------------
+
+        markEventProcessed(
+            "leaves",
+            eventId
+        );
+
+
+        leaveCooldown.set(
+            lockKey,
+            Date.now()
+        );
 
 
         console.log(
@@ -1166,17 +1477,18 @@ async function sendLeaveMessage(
         );
 
 
-    } catch (e) {
+    } catch (error) {
 
         console.error(
             "❌ [LEAVE]",
-            e.message
+            error.message
         );
+
 
     } finally {
 
-        leaveProcessing.delete(
-            leaveKey
+        leaveLocks.delete(
+            lockKey
         );
 
     }
@@ -1185,8 +1497,7 @@ async function sendLeaveMessage(
 
 
 // ============================================================
-// 🟢 دخول عضو
-// Discord Event رسمي
+// 🟢 دخول عضو - Event واحد فقط
 // ============================================================
 
 client.on(
@@ -1195,8 +1506,22 @@ client.on(
 
         try {
 
-            if (!member.guild) {
+            if (
+                member.guild.id !==
+                GUILD_ID
+            ) {
+
                 return;
+
+            }
+
+
+            if (
+                member.user?.bot
+            ) {
+
+                return;
+
             }
 
 
@@ -1206,11 +1531,11 @@ client.on(
             );
 
 
-        } catch (e) {
+        } catch (error) {
 
             console.error(
                 "❌ [MEMBER ADD]",
-                e.message
+                error.message
             );
 
         }
@@ -1220,8 +1545,7 @@ client.on(
 
 
 // ============================================================
-// 🔴 خروج عضو
-// Discord Event رسمي
+// 🔴 خروج عضو - Event واحد فقط
 // ============================================================
 
 client.on(
@@ -1230,13 +1554,22 @@ client.on(
 
         try {
 
-            if (!member.guild) {
+            if (
+                member.guild.id !==
+                GUILD_ID
+            ) {
+
                 return;
+
             }
 
 
-            if (member.user?.bot) {
+            if (
+                member.user?.bot
+            ) {
+
                 return;
+
             }
 
 
@@ -1252,11 +1585,11 @@ client.on(
             );
 
 
-        } catch (e) {
+        } catch (error) {
 
             console.error(
                 "❌ [MEMBER REMOVE]",
-                e.message
+                error.message
             );
 
         }
@@ -1307,10 +1640,6 @@ client.on(
             /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gi;
 
 
-        // ----------------------------------------------------
-        // روابط
-        // ----------------------------------------------------
-
         if (
             linkRegex.test(
                 message.content
@@ -1358,10 +1687,6 @@ client.on(
                 );
 
 
-                // ------------------------------------------------
-                // تايم أوت
-                // ------------------------------------------------
-
                 if (
                     userRecord.count >=
                     LINK_SPAM_THRESHOLD
@@ -1370,8 +1695,9 @@ client.on(
                     try {
 
                         const member =
-                            await message.guild.members
-                                .fetch(userId);
+                            await message.guild.members.fetch(
+                                userId
+                            );
 
 
                         await member.timeout(
@@ -1406,7 +1732,6 @@ client.on(
                             },
 
                             LINK_WARNING_DURATION
-
                         );
 
 
@@ -1416,10 +1741,6 @@ client.on(
 
                 }
 
-
-                // ------------------------------------------------
-                // تحذير
-                // ------------------------------------------------
 
                 const firstWarning =
                     await message.channel.send(
@@ -1439,7 +1760,6 @@ client.on(
                     },
 
                     LINK_WARNING_DURATION
-
                 );
 
 
@@ -1450,10 +1770,6 @@ client.on(
 
         }
 
-
-        // ----------------------------------------------------
-        // Text Spam
-        // ----------------------------------------------------
 
         try {
 
@@ -1492,8 +1808,9 @@ client.on(
                 try {
 
                     const member =
-                        await message.guild.members
-                            .fetch(userId);
+                        await message.guild.members.fetch(
+                            userId
+                        );
 
 
                     await member.timeout(
@@ -1528,7 +1845,6 @@ client.on(
                         },
 
                         LINK_WARNING_DURATION
-
                     );
 
 
@@ -1546,7 +1862,7 @@ client.on(
 
 
 // ============================================================
-// 📦 نقل الرسائل للمخزن
+// 📦 نقل الرسائل
 // ============================================================
 
 client.on(
@@ -1655,10 +1971,6 @@ client.on(
 
             if (!isTargetChannel) {
 
-                processingLocks.delete(
-                    messageId
-                );
-
                 return;
 
             }
@@ -1672,23 +1984,14 @@ client.on(
 
 
             if (!authorized) {
-
-                processingLocks.delete(
-                    messageId
-                );
-
                 return;
-
             }
 
 
             if (
-                reaction.emoji.name !== "✅"
+                reaction.emoji.name !==
+                "✅"
             ) {
-
-                processingLocks.delete(
-                    messageId
-                );
 
                 return;
 
@@ -1727,13 +2030,7 @@ client.on(
 
 
             if (!targetVaultId) {
-
-                processingLocks.delete(
-                    messageId
-                );
-
                 return;
-
             }
 
 
@@ -1746,10 +2043,6 @@ client.on(
                     vaultKey
                 )
             ) {
-
-                processingLocks.delete(
-                    messageId
-                );
 
                 return;
 
@@ -1784,10 +2077,6 @@ client.on(
                         vaultKey
                     );
 
-                    processingLocks.delete(
-                        messageId
-                    );
-
                     return;
 
                 }
@@ -1803,20 +2092,20 @@ client.on(
 
                 const msgFiles =
                     message.attachments
-
                         ? Array.from(
                             message.attachments.values()
                         ).map(
                             att => att.url
                         )
-
                         : [];
 
 
                 await targetVault.send({
 
                     content:
-                        `👤 **بواسطة:** <@${user.id}>\n📜 **المحتوى:**\n${msgContent !== "" ? msgContent : "**[مرفقات]**"}`,
+                        `👤 **بواسطة:** <@${user.id}>\n📜 **المحتوى:**\n${msgContent !== ""
+                            ? msgContent
+                            : "**[مرفقات]**"}`,
 
                     embeds:
                         msgEmbeds,
@@ -1905,6 +2194,7 @@ client.on(
 
                             [PermissionFlagsBits.Connect]:
                                 true
+
                         }
 
                     );
@@ -1964,6 +2254,7 @@ client.on(
 
                             [PermissionFlagsBits.Connect]:
                                 false
+
                         }
 
                     );
@@ -1980,7 +2271,7 @@ client.on(
 
 
 // ============================================================
-// 🎙️ الاتصال بالروم الصوتي
+// 🎙️ Voice
 // ============================================================
 
 async function connectToVoiceChannel() {
@@ -2014,8 +2305,7 @@ async function connectToVoiceChannel() {
                     channel.guild.id,
 
                 adapterCreator:
-                    channel.guild
-                        .voiceAdapterCreator,
+                    channel.guild.voiceAdapterCreator,
 
                 selfDeaf:
                     false,
@@ -2031,9 +2321,7 @@ async function connectToVoiceChannel() {
 
 
         connection.on(
-
             VoiceConnectionStatus.Ready,
-
             () => {
 
                 if (
@@ -2046,14 +2334,11 @@ async function connectToVoiceChannel() {
                 }
 
             }
-
         );
 
 
         connection.on(
-
             VoiceConnectionStatus.Disconnected,
-
             async () => {
 
                 try {
@@ -2085,7 +2370,6 @@ async function connectToVoiceChannel() {
                 }
 
             }
-
         );
 
 
@@ -2122,7 +2406,7 @@ async function connectToVoiceChannel() {
 
 
 // ============================================================
-// 🤖 Ready
+// 🤖 READY
 // ============================================================
 
 client.once(
@@ -2133,11 +2417,13 @@ client.once(
             "\n============================================"
         );
 
-
         console.log(
             `✅ HERTZ ADMIN BOT: ${client.user.tag}`
         );
 
+        console.log(
+            "🛡️ WELCOME/LEAVE ANTI-SPAM: ENABLED"
+        );
 
         console.log(
             "============================================\n"
@@ -2151,10 +2437,9 @@ client.once(
         const rest =
             new REST({
                 version: "10"
-            })
-                .setToken(
-                    process.env.DISCORD_TOKEN
-                );
+            }).setToken(
+                process.env.DISCORD_TOKEN
+            );
 
 
         try {
@@ -2224,7 +2509,7 @@ client.once(
 
 
         // ----------------------------------------------------
-        // نشر القوانين بعد تشغيل البوت
+        // نشر القوانين
         // ----------------------------------------------------
 
         setTimeout(
@@ -2248,13 +2533,11 @@ client.once(
 
                     }
 
-
                 } catch (e) {}
 
             },
 
             3000
-
         );
 
 
@@ -2266,7 +2549,7 @@ client.once(
 
 
         // ----------------------------------------------------
-        // مراقبة Voice
+        // فحص Voice
         // ----------------------------------------------------
 
         setInterval(
@@ -2290,7 +2573,6 @@ client.once(
 
                     }
 
-
                 } catch (e) {
 
                     connectToVoiceChannel();
@@ -2300,7 +2582,6 @@ client.once(
             },
 
             10 * 1000
-
         );
 
     }
@@ -2353,7 +2634,6 @@ client.on(
 
                 });
 
-
                 return;
 
             }
@@ -2385,22 +2665,15 @@ client.on(
 
                     });
 
-
-                    clearProcessing.delete(
-                        userId
-                    );
-
-
                     return;
 
                 }
 
 
                 const count =
-                    interaction.options
-                        .getInteger(
-                            "count"
-                        );
+                    interaction.options.getInteger(
+                        "count"
+                    );
 
 
                 if (
@@ -2418,12 +2691,6 @@ client.on(
 
                     });
 
-
-                    clearProcessing.delete(
-                        userId
-                    );
-
-
                     return;
 
                 }
@@ -2435,11 +2702,10 @@ client.on(
 
 
                 const deleted =
-                    await interaction.channel
-                        .bulkDelete(
-                            count,
-                            true
-                        );
+                    await interaction.channel.bulkDelete(
+                        count,
+                        true
+                    );
 
 
                 if (
@@ -2519,7 +2785,6 @@ client.on(
 
                 });
 
-
                 return;
 
             }
@@ -2550,12 +2815,6 @@ client.on(
                             true
 
                     });
-
-
-                    rulesProcessing.delete(
-                        userId
-                    );
-
 
                     return;
 
@@ -2611,16 +2870,16 @@ client.on(
 
 
 // ============================================================
-// 🚨 حماية أخطاء البوت
+// 🚨 أخطاء
 // ============================================================
 
 process.on(
     "unhandledRejection",
-    (r) => {
+    (reason) => {
 
         console.error(
             "❌ [UNHANDLED REJECTION]",
-            r
+            reason
         );
 
     }
@@ -2629,11 +2888,11 @@ process.on(
 
 process.on(
     "uncaughtException",
-    (e) => {
+    (error) => {
 
         console.error(
             "❌ [UNCAUGHT EXCEPTION]",
-            e
+            error
         );
 
     }
@@ -2641,7 +2900,7 @@ process.on(
 
 
 // ============================================================
-// 🌐 تشغيل السيرفر
+// 🌐 Server
 // ============================================================
 
 app.listen(
@@ -2658,16 +2917,16 @@ app.listen(
 
 
 // ============================================================
-// 🔑 تسجيل دخول البوت
+// 🔑 Login
 // ============================================================
 
 client.login(
     process.env.DISCORD_TOKEN
 )
 .catch(
-    (err) =>
+    error =>
         console.error(
             "❌ [LOGIN]",
-            err.message
+            error.message
         )
 );

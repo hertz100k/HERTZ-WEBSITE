@@ -1,72 +1,59 @@
 require("dotenv").config();
 
-const { Client, GatewayIntentBits, Partials, ChannelType, PermissionFlagsBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require("discord.js");
-const { joinVoiceChannel, entersState, VoiceConnectionStatus } = require("@discordjs/voice");
-const { createClient } = require("@supabase/supabase-js");
+const {
+    Client,
+    GatewayIntentBits,
+    Partials,
+    ChannelType,
+    REST,
+    Routes,
+    SlashCommandBuilder
+} = require("discord.js");
+const {
+    joinVoiceChannel,
+    entersState,
+    VoiceConnectionStatus
+} = require("@discordjs/voice");
 const express = require("express");
-const fs = require("fs");
 
 // ============================================================
-// تعريف الآيبيهات
+// الآي ديهات الجديدة
 // ============================================================
-const SUPPORT_CHANNEL_ID = "1549573975640637450";
-const ORDER_CHANNEL_ID = "1552304716434645032";
-const CANCEL_CHANNEL_ID = "1552295251182493726";
+const VOICE_CHANNEL_ID = "1555278659194196008"; // قناة البوت الصوتية
+const GENERAL_CHAT_ID  = "1555278706056892516"; // الشات العام
+const MUSIC_CHAT_ID    = "1555278707055267860"; // شات الميوزك
 
-const TRASH_SUPPORT_CHANNEL_ID = "1549529917757325322";
-const TRASH_ORDER_CHANNEL_ID = "1549530385908506694";
-const TRASH_CANCEL_CHANNEL_ID = "1549530638627897385";
-
-const TARGET_VOICE_CHANNEL_ID = "1550379501714808893";
-const TICKET_VOICE_CHANNEL_ID = "1550631251130581072";
-const AUTHORIZED_ROLE_ID = "1550641497173659778";
-
-const WELCOME_CHANNEL_ID = "1550624611937288253";
-const LEAVE_CHANNEL_ID = "1552651900736774164";
-const AUTO_ROLE_ID = "1550646079475683419";
-const WELCOME_IMAGE_URL = "https://raw.githubusercontent.com/titopanel2-oss/tool/main/welcome.gif";
-const SERVER_NAME = "co.developer support";
-const GUILD_ID = "1549528572037922868";
-
-const GENERAL_RULES_CHANNEL_ID = "1550604801015025756";
-const ADMIN_RULES_CHANNEL_ID = "1550655493628895312";
+const ROLE_1_ID = "1555278590009151598"; // الرول الأولى
+const ROLE_2_ID = "1555278591170838528"; // الرول الثانية
+const ROLE_3_ID = "1555278592206839933"; // الرول الثالثة
+const AUTO_ROLE_ID = "1555278602407510140"; // الرول التلقائية
 
 const PORT = process.env.PORT || 3000;
 const TARGET_HOURS = 1000;
 let voiceSessionStartTime = null;
 
 // ============================================================
-// أنظمة منع التكرار
+// إعدادات الحماية
 // ============================================================
-const movedMessages = new Set();
-const processingLocks = new Set();
-const sourceMessagesDeleted = new Set();
-const vaultMessages = new Set();
+const PROTECTED_CHANNELS = [GENERAL_CHAT_ID, MUSIC_CHAT_ID]; // الرومات المحمية
+const EXEMPT_ROLES = [ROLE_1_ID, ROLE_2_ID, ROLE_3_ID]; // معفيين من الحماية
+const CLEAR_ALLOWED_ROLES = [ROLE_1_ID, ROLE_2_ID, ROLE_3_ID]; // مسموح لهم بالكلير
 
-// ✅ أقفال منفصلة لكل عضو لمنع تكرار الرسائل
-const processingWelcome = new Set(); // guild:member ID مباشرة (تم معالجتها)
-const processingLeave = new Set();   // guild:member ID مباشرة (تم معالجتها)
+const SPAM_THRESHOLD = 5;                       // 5 رسايل
+const SPAM_TIME_WINDOW = 5 * 1000;              // خلال 5 ثواني
+const SPAM_TIMEOUT_DURATION = 15 * 60 * 1000;   // تايم أوت 15 دقيقة
 
+const LINK_STRIKE_LIMIT = 5;                    // 5 مرات لينك
+const LINK_TIMEOUT_DURATION = 15 * 60 * 1000;   // تايم أوت 15 دقيقة
+const LINK_STRIKE_RESET = 15 * 60 * 1000;       // تصفير العدادات بعد 15 دقيقة سكوت
+
+// ============================================================
+// متغيرات عامة
+// ============================================================
+const linkStrikeMap = new Map();    // userId -> { count, lastTime }
+const messageSpamMap = new Map();   // userId -> { count, lastTime, messageIds }
 const clearProcessing = new Set();
-const linkSpamMap = new Map();
-
-// ============================================================
-// نظام حماية سبام الرسايل
-// ============================================================
-const messageSpamMap = new Map(); // userId -> { count: number, lastTime: timestamp, warned: boolean, messageIds: [] }
-const SPAM_THRESHOLD = 5; // عدد الرسايل في فترة قصيرة
-const SPAM_TIME_WINDOW = 5000; // 5 ثواني
-const SPAM_TIMEOUT_DURATION = 10 * 60 * 1000; // 10 دقائق
-
-const SUPABASE_KEY =
-    process.env.SUPABASE_KEY ||
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.SUPABASE_SERVICE_KEY;
-
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    SUPABASE_KEY
-);
+let currentConnection = null;
 
 // ============================================================
 // Discord Client
@@ -76,495 +63,299 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.GuildVoiceStates,
         GatewayIntentBits.GuildMembers
     ],
     partials: [
-        Partials.Message, Partials.Channel, Partials.Reaction,
-        Partials.GuildMember, Partials.User
+        Partials.Message,
+        Partials.Channel,
+        Partials.GuildMember,
+        Partials.User
     ]
 });
 
-let currentConnection = null;
-
 // ============================================================
-// Express Server
+// Express
 // ============================================================
 const app = express();
 app.use(express.json());
 
 app.get("/", (req, res) => {
-    const uptimeHours = voiceSessionStartTime ? ((Date.now() - voiceSessionStartTime) / (1000 * 60 * 60)).toFixed(2) : 0;
-    res.send(`HERTZ ADMIN BOT is running. | Voice: ${uptimeHours}h / ${TARGET_HOURS}h`);
+    const uptimeHours = voiceSessionStartTime
+        ? ((Date.now() - voiceSessionStartTime) / 3600000).toFixed(2)
+        : 0;
+    res.send(`BOT is running. | Voice: ${uptimeHours}h / ${TARGET_HOURS}h`);
 });
 
 // ============================================================
-// نظام الصلاحيات
+// Helpers
 // ============================================================
-async function isAuthorizedFast(guild, userId) {
+async function getMember(guild, userId) {
     try {
-        let member = guild.members.cache.get(userId);
-        if (!member) {
-            try {
-                member = await guild.members.fetch(userId);
-            } catch (fetchErr) {
-                return false;
-            }
-        }
-        if (!member) return false;
-        return member.roles.cache.has(AUTHORIZED_ROLE_ID);
+        let m = guild.members.cache.get(userId);
+        if (!m) m = await guild.members.fetch(userId);
+        return m;
+    } catch {
+        return null;
+    }
+}
+
+async function hasAnyRole(guild, userId, roleIds) {
+    const member = await getMember(guild, userId);
+    if (!member) return false;
+    return member.roles.cache.some(r => roleIds.includes(r.id));
+}
+
+// ============================================================
+// AUTO ROLE عند دخول أي عضو
+// ============================================================
+client.on("guildMemberAdd", async (member) => {
+    try {
+        if (!member || member.user.bot) return;
+        await member.roles.add(AUTO_ROLE_ID, "رول تلقائي عند الدخول");
+        console.log(`✅ [AUTO ROLE] تم إعطاء الرول التلقائي لـ ${member.user.tag}`);
     } catch (err) {
-        return false;
-    }
-}
-
-// ============================================================
-// دالة مسح الرسايل التلقائية
-// ============================================================
-async function deleteMessagesAutomatic(channel, messageIds) {
-    if (!channel || !messageIds || messageIds.length === 0) return;
-    
-    try {
-        for (const msgId of messageIds) {
-            try {
-                const msg = await channel.messages.fetch(msgId).catch(() => null);
-                if (msg) {
-                    await msg.delete().catch(() => {});
-                    await new Promise(resolve => setTimeout(resolve, 100)); // تأخير صغير بين الحذف
-                }
-            } catch (err) {
-                console.error(`❌ خطأ في حذف الرسالة ${msgId}:`, err.message);
-            }
-        }
-    } catch (error) {
-        console.error(`❌ خطأ في مسح الرسايل:`, error.message);
-    }
-}
-
-// ============================================================
-// دالة الترحيب (رسالة واحدة فقط)
-// ============================================================
-async function sendWelcomeMessage(guild, member) {
-    if (!guild || !member || !member.user) return;
-    if (member.user.bot) return;
-
-    const key = `${guild.id}:${member.id}`;
-
-    // منع التكرار: إذا تمت معالجة هذا العضو مسبقاً
-    if (processingWelcome.has(key)) {
-        console.log(`⏭️ [WELCOME SKIP] تم ترحيب هذا العضو من قبل: ${member.user.tag}`);
-        return;
-    }
-
-    try {
-        console.log(`🎉 [WELCOME] ${member.user.tag}`);
-
-        // إضافة الرتبة التلقائية
-        try {
-            const role = guild.roles.cache.get(AUTO_ROLE_ID);
-            if (role) {
-                await member.roles.add(role, 'رول تلقائي');
-                console.log(`✅ [AUTO ROLE] تمت الإضافة`);
-            }
-        } catch (roleError) {
-            console.error(`❌ [AUTO ROLE]:`, roleError.message);
-        }
-
-        const welcomeChannel = await guild.channels.fetch(WELCOME_CHANNEL_ID).catch(() => null);
-        if (!welcomeChannel) {
-            console.error('❌ روم الترحيب غير موجود');
-            return;
-        }
-
-        const embed = new EmbedBuilder()
-            .setColor(0x5865F2)
-            .setTitle(`مرحباً بك في السيرفر`)
-            .setDescription(`أهلاً بك يا <@${member.id}> في سيرفر **${SERVER_NAME}**`)
-            .setImage(WELCOME_IMAGE_URL)
-            .setThumbnail(member.user.displayAvatarURL({ dynamic: true, size: 256 }))
-            .setTimestamp();
-
-        await welcomeChannel.send({ embeds: [embed] });
-        console.log(`✅ [WELCOME] رسالة واحدة فقط\n`);
-
-        // إضافة المفتاح للـ Set بعد معالجة الترحيب
-        processingWelcome.add(key);
-    } catch (error) {
-        console.error(`❌ [WELCOME ERROR]:`, error.message);
-    }
-}
-
-// ============================================================
-// دالة المغادرة (رسالة واحدة فقط)
-// ============================================================
-async function sendLeaveMessage(guild, memberId, memberTag) {
-    if (!guild || !memberId) return;
-
-    const key = `${guild.id}:${memberId}`;
-
-    // منع التكرار
-    if (processingLeave.has(key)) {
-        console.log(`⏭️ [LEAVE SKIP] تم تسجيل مغادرة هذا العضو من قبل: ${memberTag}`);
-        return;
-    }
-
-    try {
-        console.log(`🚪 [LEAVE] ${memberTag}`);
-
-        const leaveChannel = await guild.channels.fetch(LEAVE_CHANNEL_ID).catch(() => null);
-        if (!leaveChannel) {
-            console.error('❌ روم المغادرة غير موجود');
-            return;
-        }
-
-        await leaveChannel.send({ content: `**غادر** <@${memberId}>` });
-        console.log(`✅ [LEAVE] رسالة واحدة فقط\n`);
-
-        // إضافة المفتاح للـ Set بعد معالجة المغادرة
-        processingLeave.add(key);
-    } catch (error) {
-        console.error(`❌ [LEAVE ERROR]:`, error.message);
-    }
-}
-
-// ============================================================
-// أحداث دخول وخروج الأعضاء (المصدر الوحيد)
-// ============================================================
-client.on('guildMemberAdd', async (member) => {
-    try {
-        if (!member || !member.user || member.user.bot) return;
-        console.log(`🔔 [EVENT] دخول عضو: ${member.user.tag}`);
-        await sendWelcomeMessage(member.guild, member);
-    } catch (error) {
-        console.error(`❌ [guildMemberAdd ERROR]:`, error.message);
-    }
-});
-
-client.on('guildMemberRemove', async (member) => {
-    try {
-        if (!member || !member.user || member.user.bot) return;
-        console.log(`🔔 [EVENT] خروج عضو: ${member.user.tag}`);
-        await sendLeaveMessage(member.guild, member.id, member.user.tag);
-    } catch (error) {
-        console.error(`❌ [guildMemberRemove ERROR]:`, error.message);
+        console.error("❌ [AUTO ROLE]", err.message);
     }
 });
 
 // ============================================================
-// نظام النقل الرقابي
+// حماية الروابط + السبام (الشات العام + الميوزك فقط)
 // ============================================================
-client.on('messageReactionAdd', async (reaction, user) => {
-    if (user.bot) return;
-
-    if (reaction.partial) {
-        try { await reaction.fetch(); } catch (error) { return; }
-    }
-    const message = reaction.message;
-    if (message.partial) {
-        try { await message.fetch(); } catch (error) { return; }
-    }
-    if (!message.guild) return;
-
-    const messageId = message.id;
-
-    if (movedMessages.has(messageId)) return;
-    if (sourceMessagesDeleted.has(messageId)) return;
-    if (processingLocks.has(messageId)) return;
-
-    processingLocks.add(messageId);
-
+client.on("messageCreate", async (message) => {
     try {
-        const isTargetChannel =
-            message.channelId === SUPPORT_CHANNEL_ID ||
-            message.channelId === ORDER_CHANNEL_ID ||
-            message.channelId === CANCEL_CHANNEL_ID;
+        if (message.author.bot || !message.guild) return;
 
-        if (!isTargetChannel) {
-            processingLocks.delete(messageId);
-            return;
-        }
+        // تطبيق الحماية على الشات العام والميوزك فقط
+        if (!PROTECTED_CHANNELS.includes(message.channelId)) return;
 
-        const authorized = await isAuthorizedFast(message.guild, user.id);
-        if (!authorized) {
-            processingLocks.delete(messageId);
-            return;
-        }
+        const userId = message.author.id;
 
-        const emoji = reaction.emoji.name;
-        if (emoji !== '✅') {
-            processingLocks.delete(messageId);
-            return;
-        }
+        // لو معاه رول 1 أو 2 أو 3 → ممنوع يتأثر بأي حماية
+        const exempt = await hasAnyRole(message.guild, userId, EXEMPT_ROLES);
+        if (exempt) return;
 
-        let targetVaultId = null;
-        if (message.channelId === SUPPORT_CHANNEL_ID) {
-            targetVaultId = TRASH_SUPPORT_CHANNEL_ID;
-        } else if (message.channelId === ORDER_CHANNEL_ID) {
-            targetVaultId = TRASH_ORDER_CHANNEL_ID;
-        } else if (message.channelId === CANCEL_CHANNEL_ID) {
-            targetVaultId = TRASH_CANCEL_CHANNEL_ID;
-        }
+        const now = Date.now();
 
-        if (!targetVaultId) {
-            processingLocks.delete(messageId);
-            return;
-        }
+        // ============================================================
+        // 1) حماية الروابط
+        // ============================================================
+        const linkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gi;
 
-        const vaultKey = `${targetVaultId}:${messageId}`;
-        if (vaultMessages.has(vaultKey)) {
-            processingLocks.delete(messageId);
-            return;
-        }
-
-        movedMessages.add(messageId);
-        vaultMessages.add(vaultKey);
-
-        try {
-            const targetVault = await client.channels.fetch(targetVaultId);
-            if (!targetVault) {
-                movedMessages.delete(messageId);
-                vaultMessages.delete(vaultKey);
-                processingLocks.delete(messageId);
-                return;
-            }
-
-            const msgContent = message.content || "";
-            const msgEmbeds = message.embeds || [];
-            const msgFiles = message.attachments ? Array.from(message.attachments.values()).map(att => att.url) : [];
-
-            await targetVault.send({
-                content: `👤 **بواسطة الأدمن:** <@${user.id}>\n📜 **المحتوى المنقول:**\n${msgContent !== "" ? msgContent : "**[مرفقات أو رسالة بدون نص]**"}`,
-                embeds: msgEmbeds,
-                files: msgFiles
-            });
-
-            sourceMessagesDeleted.add(messageId);
-            await message.delete().catch(() => {});
-            console.log(`✅ [CLEAN MOVE SUCCESS] messageId=${messageId}`);
-        } catch (error) {
-            console.error(`❌ [MOVE ERROR]:`, error);
-            movedMessages.delete(messageId);
-            vaultMessages.delete(vaultKey);
-        }
-    } finally {
-        processingLocks.delete(messageId);
-    }
-});
-
-// ============================================================
-// نظام حماية الروابط ونشر القوانين
-// ============================================================
-client.on('messageCreate', async (message) => {
-    if (message.author.bot || !message.guild) return;
-
-    const userId = message.author.id;
-    const isAdmin = await isAuthorizedFast(message.guild, message.author.id);
-
-    // ============================================================
-    // نظام حماية سبام الرسايل
-    // ============================================================
-    if (!isAdmin) {
-        const currentTime = Date.now();
-        let userSpamData = messageSpamMap.get(userId);
-
-        if (!userSpamData) {
-            userSpamData = { count: 1, lastTime: currentTime, warned: false, messageIds: [message.id] };
-            messageSpamMap.set(userId, userSpamData);
-        } else {
-            // إذا كانت الرسالة في نفس الفترة الزمنية
-            if (currentTime - userSpamData.lastTime < SPAM_TIME_WINDOW) {
-                userSpamData.count += 1;
-                userSpamData.messageIds.push(message.id);
-            } else {
-                // تجاوز الفترة الزمنية، إعادة تعيين العداد
-                userSpamData.count = 1;
-                userSpamData.warned = false;
-                userSpamData.messageIds = [message.id];
-            }
-            userSpamData.lastTime = currentTime;
-        }
-
-        // التحقق من السبام
-        if (userSpamData.count >= SPAM_THRESHOLD) {
-            try {
-                // مسح جميع رسائل السبام تلقائياً
-                await deleteMessagesAutomatic(message.channel, userSpamData.messageIds);
-
-                // إعطاء تايم أوت 10 دقائق
-                const member = await message.guild.members.fetch(userId);
-                await member.timeout(SPAM_TIMEOUT_DURATION, 'سبام رسائل متكرر');
-                
-                // إرسال رسالة تحذيرية (ستُحذف تلقائياً)
-                const timeoutMsg = await message.channel.send(`⛔ ${message.author}, تم إعطاؤك **تايم أوت لمدة 10 دقائق** بسبب السبام المتكرر. تم حذف رسائلك تلقائياً.`);
-                setTimeout(() => timeoutMsg.delete().catch(() => {}), 7000);
-
-                console.log(`🚫 [SPAM TIMEOUT] ${message.author.tag} تم إعطاؤه تايم أوت لمدة 10 دقائق + حذف الرسايل`);
-
-                // مسح البيانات
-                messageSpamMap.delete(userId);
-                return;
-            } catch (err) {
-                console.error('❌ خطأ في إعطاء تايم أوت:', err);
-            }
-        } else if (userSpamData.count === SPAM_THRESHOLD - 1 && !userSpamData.warned) {
-            // إرسال تحذير قبل التايم أوت
-            userSpamData.warned = true;
-            try {
-                const warningMsg = await message.channel.send(`⚠️ ${message.author}, **تحذير!** توقف عن السبام وإلا ستتعرض لتايم أوت.`);
-                setTimeout(() => warningMsg.delete().catch(() => {}), 5000);
-                console.log(`⚠️ [SPAM WARNING] ${message.author.tag} تحذير من السبام`);
-            } catch (err) {
-                console.error('❌ خطأ في إرسال التحذير:', err);
-            }
-        }
-    }
-
-    // ============================================================
-    // حماية الروابط
-    // ============================================================
-    const linkRegex = /(https?:\/\/[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9][-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gi;
-
-    if (linkRegex.test(message.content)) {
-        if (isAdmin) return;
-
-        try {
+        if (linkRegex.test(message.content)) {
             // حذف الرسالة تلقائياً
             await message.delete().catch(() => {});
 
-            const currentTime = Date.now();
-
-            let userRecord = linkSpamMap.get(userId) || { count: 0, lastTime: currentTime };
-
-            if (currentTime - userRecord.lastTime < 60000) {
-                userRecord.count += 1;
-            } else {
-                userRecord.count = 1;
+            // عدّاد اللينك للعضو
+            let rec = linkStrikeMap.get(userId);
+            if (!rec || now - rec.lastTime > LINK_STRIKE_RESET) {
+                rec = { count: 0, lastTime: now };
             }
-            userRecord.lastTime = currentTime;
-            linkSpamMap.set(userId, userRecord);
+            rec.count += 1;
+            rec.lastTime = now;
+            linkStrikeMap.set(userId, rec);
 
-            if (userRecord.count >= 2) {
+            console.log(`🔗 [LINK] ${message.author.tag} - محاولة رقم ${rec.count}`);
+
+            // لو وصل للخامسة → تايم أوت 15 دقيقة
+            if (rec.count >= LINK_STRIKE_LIMIT) {
                 try {
                     const member = await message.guild.members.fetch(userId);
-                    await member.timeout(60 * 60 * 1000, 'إرسال روابط متكررة ومخالفة لقوانين السيرفر');
-                    linkSpamMap.delete(userId);
+                    if (member.moderatable) {
+                        await member.timeout(LINK_TIMEOUT_DURATION, "نشر روابط 5 مرات");
+                    }
+                    linkStrikeMap.delete(userId);
 
-                    const warningMsg = await message.channel.send(`⚠️ ${message.author}, تم إعطاؤك **تايم أوت لمدة ساعة** بسبب إرسال الروابط المتكررة. رسالتك تم حذفها تلقائياً.`);
-                    setTimeout(() => warningMsg.delete().catch(() => {}), 7000);
-                    console.log(`🚫 [LINK TIMEOUT] ${message.author.tag} تم إعطاؤه تايم أوت لمدة ساعة + حذف الرسالة`);
-                    return;
-                } catch (err) {
-                    console.error('فشل إعطاء تايم أوت للعضو:', err);
+                    const warn = await message.channel.send(
+                        `⛔ ${message.author} تم إعطاؤك **تايم أوت 15 دقيقة** بسبب نشر الروابط 5 مرات.`
+                    );
+                    setTimeout(() => warn.delete().catch(() => {}), 7000);
+
+                    console.log(`🚫 [LINK TIMEOUT] ${message.author.tag}`);
+                } catch (e) {
+                    console.error("❌ [LINK TIMEOUT]", e.message);
                 }
             }
-
-            const firstWarning = await message.channel.send(`⚠️ ${message.author}, ممنوع نشر الروابط في السيرفر! التكرار سيؤدي إلى تايم أوت. رسالتك تم حذفها تلقائياً.`);
-            setTimeout(() => firstWarning.delete().catch(() => {}), 5000);
-            console.log(`🔗 [LINK DELETE] ${message.author.tag} رسالة رابط محذوفة تلقائياً`);
-            return;
-
-        } catch (error) {
-            console.error('خطأ أثناء حذف الرابط:', error);
+            return; // خلصنا معالجة الرسالة
         }
+
+        // ============================================================
+        // 2) حماية السبام
+        // ============================================================
+        let spam = messageSpamMap.get(userId);
+        if (!spam) {
+            spam = { count: 1, lastTime: now, messageIds: [message.id] };
+            messageSpamMap.set(userId, spam);
+        } else {
+            if (now - spam.lastTime < SPAM_TIME_WINDOW) {
+                spam.count += 1;
+                spam.messageIds.push(message.id);
+            } else {
+                spam.count = 1;
+                spam.messageIds = [message.id];
+            }
+            spam.lastTime = now;
+        }
+
+        if (spam.count >= SPAM_THRESHOLD) {
+            // حذف رسائل السبام
+            for (const id of spam.messageIds) {
+                try {
+                    const m = await message.channel.messages.fetch(id).catch(() => null);
+                    if (m) await m.delete().catch(() => {});
+                } catch {}
+            }
+
+            try {
+                const member = await message.guild.members.fetch(userId);
+                if (member.moderatable) {
+                    await member.timeout(SPAM_TIMEOUT_DURATION, "سبام رسائل");
+                }
+                const warn = await message.channel.send(
+                    `⛔ ${message.author} تم إعطاؤك **تايم أوت 15 دقيقة** بسبب السبام المتكرر.`
+                );
+                setTimeout(() => warn.delete().catch(() => {}), 7000);
+
+                console.log(`🚫 [SPAM TIMEOUT] ${message.author.tag}`);
+            } catch (e) {
+                console.error("❌ [SPAM TIMEOUT]", e.message);
+            }
+
+            messageSpamMap.delete(userId);
+        }
+    } catch (err) {
+        console.error("❌ [messageCreate]", err.message);
+    }
+});
+
+// ============================================================
+// Ready Event + تسجيل الأوامر
+// ============================================================
+client.once("ready", async () => {
+    console.log(`\n============================================`);
+    console.log(`✅ البوت اشتغل: ${client.user.tag}`);
+    console.log(`📋 الروم الصوتي: ${VOICE_CHANNEL_ID}`);
+    console.log(`📋 الشات العام: ${GENERAL_CHAT_ID}`);
+    console.log(`📋 شات الميوزك: ${MUSIC_CHAT_ID}`);
+    console.log(`============================================\n`);
+
+    const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
+
+    try {
+        const commands = [
+            new SlashCommandBuilder()
+                .setName("clear")
+                .setDescription("حذف عدد معين من الرسائل (للرولات الإدارية فقط)")
+                .addIntegerOption(option =>
+                    option
+                        .setName("count")
+                        .setDescription("عدد الرسائل المراد حذفها (1 - 100)")
+                        .setRequired(true)
+                        .setMinValue(1)
+                        .setMaxValue(100)
+                )
+                .toJSON()
+        ];
+
+        await rest.put(
+            Routes.applicationCommands(client.user.id),
+            { body: commands }
+        );
+        console.log("✅ تم تسجيل أمر /clear بنجاح");
+    } catch (err) {
+        console.error("❌ خطأ في تسجيل الأوامر:", err);
     }
 
-    // ============================================================
-    // نشر القوانين
-    // ============================================================
-    if (message.content === '!sendrules') {
+    connectToVoiceChannel();
+
+    setInterval(() => {
         try {
-            const isAdmin = await isAuthorizedFast(message.guild, message.author.id);
-            if (!isAdmin) {
-                return message.reply('❌ عذراً، هذا الأمر مخصص للإدارة فقط!');
+            const status = currentConnection?.state?.status;
+            if (
+                !currentConnection ||
+                status === VoiceConnectionStatus.Disconnected ||
+                status === VoiceConnectionStatus.Destroyed
+            ) {
+                console.log("🔄 [VOICE CHECK] إعادة الاتصال...");
+                connectToVoiceChannel();
+            }
+        } catch {
+            connectToVoiceChannel();
+        }
+    }, 10 * 1000);
+});
+
+// ============================================================
+// Slash /clear (الرول 1 و 2 و 3 فقط)
+// ============================================================
+client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isChatInputCommand()) return;
+
+    if (interaction.commandName === "clear") {
+        const userId = interaction.user.id;
+
+        if (clearProcessing.has(userId)) {
+            return interaction.reply({
+                content: "⏳ في عملية مسح جارية بالفعل.",
+                ephemeral: true
+            });
+        }
+
+        clearProcessing.add(userId);
+
+        try {
+            const allowed = await hasAnyRole(
+                interaction.guild,
+                userId,
+                CLEAR_ALLOWED_ROLES
+            );
+
+            if (!allowed) {
+                return interaction.reply({
+                    content: "❌ هذا الأمر مخصص للرولات الإدارية فقط.",
+                    ephemeral: true
+                });
             }
 
-            let generalRules, adminRules;
+            const count = interaction.options.getInteger("count");
+            await interaction.deferReply({ ephemeral: true });
 
+            const deleted = await interaction.channel.bulkDelete(count, true);
+            await interaction.editReply({
+                content: `✅ تم حذف **${deleted.size}** رسالة بنجاح.`
+            });
+
+            console.log(`🧹 [CLEAR] ${interaction.user.tag} حذف ${deleted.size} رسالة`);
+        } catch (err) {
+            console.error("❌ [CLEAR]", err.message);
             try {
-                generalRules = fs.readFileSync('./rules-general.txt', 'utf8');
-            } catch (e) {
-                return message.reply('❌ ملف `rules-general.txt` غير موجود في مجلد البوت!');
-            }
-
-            try {
-                adminRules = fs.readFileSync('./rules-admin.txt', 'utf8');
-            } catch (e) {
-                return message.reply('❌ ملف `rules-admin.txt` غير موجود في مجلد البوت!');
-            }
-
-            const generalChannel = message.guild.channels.cache.get(GENERAL_RULES_CHANNEL_ID);
-            if (generalChannel) {
-                await generalChannel.send(generalRules);
-            } else {
-                return message.reply('❌ لم أستطع العثور على روم القوانين العامة، تأكد من الآي دي!');
-            }
-
-            const adminChannel = message.guild.channels.cache.get(ADMIN_RULES_CHANNEL_ID);
-            if (adminChannel) {
-                await adminChannel.send(adminRules);
-            } else {
-                return message.reply('❌ لم أستطع العثور على روم الإدارة، تأكد من الآي دي!');
-            }
-
-            message.reply('✅ تم نشر القوانين العامة وقوانين الإدارة بنجاح في روماتها المخصصة!');
-
-        } catch (error) {
-            console.error('خطأ في نشر القوانين:', error);
-            message.reply('❌ حدث خطأ أثناء قراءة ملفات القوانين، تأكد من وجود ملفات الـ txt في نفس الفولدر.');
+                await interaction.editReply({
+                    content: "❌ حدث خطأ أثناء محاولة مسح الرسائل."
+                });
+            } catch {}
+        } finally {
+            clearProcessing.delete(userId);
         }
     }
 });
 
 // ============================================================
-// نظام التيكت فويس
-// ============================================================
-client.on('channelCreate', async (channel) => {
-    try {
-        if (!channel.guild) return;
-        const channelName = channel.name.toLowerCase();
-        if (channelName.includes('ticket') || channelName.includes('تيكت')) {
-            const ticketVoice = await channel.guild.channels.fetch(TICKET_VOICE_CHANNEL_ID).catch(() => null);
-            if (ticketVoice) {
-                await ticketVoice.permissionOverwrites.edit(channel.guild.roles.everyone, {
-                    [PermissionFlagsBits.ViewChannel]: true,
-                    [PermissionFlagsBits.Connect]: true
-                });
-            }
-        }
-    } catch (error) {}
-});
-
-client.on('channelDelete', async (channel) => {
-    try {
-        if (!channel.guild) return;
-        const channelName = channel.name.toLowerCase();
-        if (channelName.includes('ticket') || channelName.includes('تيكت')) {
-            const ticketVoice = await channel.guild.channels.fetch(TICKET_VOICE_CHANNEL_ID).catch(() => null);
-            if (ticketVoice) {
-                await ticketVoice.permissionOverwrites.edit(channel.guild.roles.everyone, {
-                    [PermissionFlagsBits.ViewChannel]: false,
-                    [PermissionFlagsBits.Connect]: false
-                });
-            }
-        }
-    } catch (error) {}
-});
-
-// ============================================================
-// الاتصال الدائم بالفويس
+// الاتصال الدائم بالروم الصوتي
 // ============================================================
 async function connectToVoiceChannel() {
     try {
-        const channel = await client.channels.fetch(TARGET_VOICE_CHANNEL_ID);
+        const channel = await client.channels
+            .fetch(VOICE_CHANNEL_ID)
+            .catch(() => null);
+
         if (!channel || channel.type !== ChannelType.GuildVoice) {
-            console.log('❌ [VOICE] القناة مش موجودة أو مش قناة صوتية!');
+            console.log("❌ [VOICE] القناة غير موجودة أو ليست صوتية");
             setTimeout(connectToVoiceChannel, 5000);
             return;
         }
 
         if (currentConnection) {
-            try { currentConnection.destroy(); } catch (e) {}
+            try { currentConnection.destroy(); } catch {}
             currentConnection = null;
         }
 
@@ -575,191 +366,46 @@ async function connectToVoiceChannel() {
             selfDeaf: false,
             selfMute: false
         });
+
         currentConnection = connection;
 
         connection.on(VoiceConnectionStatus.Ready, () => {
             if (!voiceSessionStartTime) voiceSessionStartTime = Date.now();
-            console.log(`✅ [VOICE] البوت اتصل بقناة: ${channel.name}`);
+            console.log(`✅ [VOICE] البوت اتصل بـ: ${channel.name}`);
         });
 
         connection.on(VoiceConnectionStatus.Disconnected, async () => {
-            console.log('⚠️ [VOICE] الاتصال انقطع، جاري إعادة المحاولة...');
+            console.log("⚠️ [VOICE] الاتصال انقطع، جاري إعادة المحاولة...");
             try {
-                await entersState(connection, VoiceConnectionStatus.Signalling, 5_000);
-                await entersState(connection, VoiceConnectionStatus.Connecting, 5_000);
-            } catch (error) {
-                try { connection.destroy(); } catch (e) {}
+                await entersState(connection, VoiceConnectionStatus.Signalling, 5000);
+                await entersState(connection, VoiceConnectionStatus.Connecting, 5000);
+            } catch {
+                try { connection.destroy(); } catch {}
                 setTimeout(connectToVoiceChannel, 1000);
             }
         });
 
         connection.on(VoiceConnectionStatus.Destroyed, () => {
-            console.log('⚠️ [VOICE] الاتصال تدمر، جاري إعادة الاتصال...');
+            console.log("⚠️ [VOICE] الاتصال اتدمر، جاري إعادة الاتصال...");
             setTimeout(connectToVoiceChannel, 1000);
         });
 
-        connection.on('error', (err) => {
-            console.error('❌ [VOICE] خطأ:', err.message);
-            try { connection.destroy(); } catch (e) {}
+        connection.on("error", (err) => {
+            console.error("❌ [VOICE]", err.message);
+            try { connection.destroy(); } catch {}
             setTimeout(connectToVoiceChannel, 1000);
         });
-    } catch (error) {
-        console.error('❌ [VOICE] خطأ في الاتصال:', error.message);
+    } catch (err) {
+        console.error("❌ [VOICE]", err.message);
         setTimeout(connectToVoiceChannel, 2000);
     }
 }
 
 // ============================================================
-// Ready Event
+// منع الكراشات
 // ============================================================
-client.once("ready", async () => {
-    console.log(`\n============================================`);
-    console.log(`✅ HERTZ ADMIN BOT is online: ${client.user.tag}`);
-    console.log(`📋 SERVER MEMBERS INTENT: ${client.options.intents.has('GuildMembers') ? '✅ مفعّل' : '❌ مش مفعّل'}`);
-    console.log(`📋 GUILD ID: ${GUILD_ID}`);
-    console.log(`📋 SUPABASE URL: ${process.env.SUPABASE_URL ? '✅ موجود' : '❌ مفقود'}`);
-    console.log(`📋 SUPABASE KEY: ${SUPABASE_KEY ? '✅ موجود' : '❌ مفقود'}`);
-    console.log(`📋 VOICE CHANNEL: ${TARGET_VOICE_CHANNEL_ID}`);
-    console.log(`📋 GENERAL RULES CHANNEL: ${GENERAL_RULES_CHANNEL_ID}`);
-    console.log(`📋 ADMIN RULES CHANNEL: ${ADMIN_RULES_CHANNEL_ID}`);
-    console.log(`📋 MODE: Discord Events Only (No Polling)`);
-    console.log(`============================================\n`);
-
-    const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
-    try {
-        const commands = [
-            new SlashCommandBuilder()
-                .setName('clear')
-                .setDescription('حذف عدد معين من الرسائل بسرعة (خاص بالإدارة)')
-                .addIntegerOption(option =>
-                    option.setName('count')
-                        .setDescription('عدد الرسائل المراد حذفها (من 1 إلى 100)')
-                        .setRequired(true)
-                        .setMinValue(1)
-                        .setMaxValue(100)
-                ),
-            new SlashCommandBuilder()
-                .setName('sendrules')
-                .setDescription('نشر القوانين العامة وقوانين الإدارة (خاص بالإدارة)')
-        ].map(command => command.toJSON());
-
-        await rest.put(
-            Routes.applicationCommands(client.user.id),
-            { body: commands },
-        );
-        console.log('✅ تم تسجيل الأوامر بنجاح!');
-    } catch (error) {
-        console.error('❌ خطأ في تسجيل أوامر السلاش:', error);
-    }
-
-    connectToVoiceChannel();
-
-    setInterval(async () => {
-        try {
-            if (!currentConnection || currentConnection.state.status === VoiceConnectionStatus.Disconnected || currentConnection.state.status === VoiceConnectionStatus.Destroyed) {
-                console.log('🔄 [VOICE CHECK] إعادة الاتصال...');
-                connectToVoiceChannel();
-            }
-        } catch (e) {
-            connectToVoiceChannel();
-        }
-    }, 10 * 1000);
-});
-
-// ============================================================
-// التعامل مع أوامر السلاش
-// ============================================================
-client.on('interactionCreate', async interaction => {
-    if (!interaction.isChatInputCommand()) return;
-
-    if (interaction.commandName === 'clear') {
-        const userId = interaction.user.id;
-
-        if (clearProcessing.has(userId)) {
-            await interaction.reply({ content: '⏳ في عملية مسح جارية بالفعل.', ephemeral: true });
-            return;
-        }
-
-        clearProcessing.add(userId);
-
-        try {
-            const authorized = await isAuthorizedFast(interaction.guild, userId);
-            if (!authorized) {
-                await interaction.reply({ content: '❌ عذراً، هذا الأمر مخصص للإدارة العليا فقط!', ephemeral: true });
-                clearProcessing.delete(userId);
-                return;
-            }
-
-            const count = interaction.options.getInteger('count');
-
-            await interaction.deferReply({ ephemeral: true });
-            const deleted = await interaction.channel.bulkDelete(count, true);
-            await interaction.editReply({ content: `✅ تم بنجاح حذف **${deleted.size}** رسالة بكل نظافة.` });
-        } catch (error) {
-            console.error('❌ خطأ أثناء مسح الرسائل:', error);
-            try {
-                await interaction.editReply({ content: '❌ حدث خطأ أثناء محاولة مسح الرسائل.' });
-            } catch (e) {}
-        } finally {
-            clearProcessing.delete(userId);
-        }
-    }
-
-    if (interaction.commandName === 'sendrules') {
-        try {
-            const authorized = await isAuthorizedFast(interaction.guild, interaction.user.id);
-            if (!authorized) {
-                await interaction.reply({ content: '❌ عذراً، هذا الأمر مخصص للإدارة فقط!', ephemeral: true });
-                return;
-            }
-
-            await interaction.deferReply({ ephemeral: true });
-
-            let generalRules, adminRules;
-
-            try {
-                generalRules = fs.readFileSync('./rules-general.txt', 'utf8');
-            } catch (e) {
-                await interaction.editReply({ content: '❌ ملف `rules-general.txt` غير موجود في مجلد البوت!' });
-                return;
-            }
-
-            try {
-                adminRules = fs.readFileSync('./rules-admin.txt', 'utf8');
-            } catch (e) {
-                await interaction.editReply({ content: '❌ ملف `rules-admin.txt` غير موجود في مجلد البوت!' });
-                return;
-            }
-
-            const generalChannel = interaction.guild.channels.cache.get(GENERAL_RULES_CHANNEL_ID);
-            if (generalChannel) {
-                await generalChannel.send(generalRules);
-            } else {
-                await interaction.editReply({ content: '❌ لم أستطع العثور على روم القوانين العامة!' });
-                return;
-            }
-
-            const adminChannel = interaction.guild.channels.cache.get(ADMIN_RULES_CHANNEL_ID);
-            if (adminChannel) {
-                await adminChannel.send(adminRules);
-            } else {
-                await interaction.editReply({ content: '❌ لم أستطع العثور على روم الإدارة!' });
-                return;
-            }
-
-            await interaction.editReply({ content: '✅ تم نشر القوانين العامة وقوانين الإدارة بنجاح!' });
-
-        } catch (error) {
-            console.error('❌ خطأ في نشر القوانين:', error);
-            try {
-                await interaction.editReply({ content: '❌ حدث خطأ أثناء نشر القوانين.' });
-            } catch (e) {}
-        }
-    }
-});
-
-process.on('unhandledRejection', () => {});
-process.on('uncaughtException', () => {});
+process.on("unhandledRejection", () => {});
+process.on("uncaughtException", () => {});
 
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`🌐 Server Port ${PORT}`);
